@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, memo } from 'react';
 import { Wifi, WifiOff, AlertTriangle, RefreshCw, Terminal, CheckCircle, Ban, Loader2, Camera } from 'lucide-react';
-import { cancelFreight, getTrackingStatus, scanTrackingCode } from '../utils/api';
+import { cancelFreight, getTrackingStatus } from '../utils/api';
 import SealVerifier from './SealVerifier';
 
 interface TelemetrySignal {

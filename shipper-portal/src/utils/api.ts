@@ -40,7 +40,7 @@ export interface CancellationResponse {
   detail: string;
 }
 
-const BASE_URL = 'http://localhost:8000/api/v1/freight';
+const BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/freight`;
 
 export async function bookFreight(payload: BookingRequest): Promise<BookingResponse> {
   const res = await fetch(`${BASE_URL}/book`, {
@@ -89,7 +89,7 @@ export async function getContainerStatus(): Promise<ContainerStatusResponse> {
 }
 
 export async function getTrackingStatus(bookingId: string): Promise<any> {
-  const res = await fetch(`http://localhost:8000/api/tracking/${bookingId}`, {
+  const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/tracking/${bookingId}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -104,7 +104,7 @@ export async function getTrackingStatus(bookingId: string): Promise<any> {
 }
 
 export async function scanTrackingCode(code: string): Promise<any> {
-  const res = await fetch(`http://localhost:8000/api/tracking/scan`, {
+  const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/tracking/scan`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

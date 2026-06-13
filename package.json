@@ -1,0 +1,17 @@
+{
+  "name": "lonics-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "shipper-portal"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace=shipper-portal",
+    "dev:backend": "npm run dev --prefix core-engine",
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "build:frontend": "npm run build --workspace=shipper-portal"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

@@ -15,6 +15,7 @@ class ShipmentStatus(str, Enum):
 
 class CargoItem(BaseModel):
     package_type: str = Field(..., description="Package type: Carton, Pallet, Drum, Bale")
+    cargo_class: Optional[str] = Field("General", description="Cargo class: General, Toxic, Foodstuff, etc.")
     length: float = Field(..., description="Length in cm")
     width: float = Field(..., description="Width in cm")
     height: float = Field(..., description="Height in cm")
@@ -26,7 +27,7 @@ class BookingRequest(BaseModel):
     origin: str
     destination: str
     cargo_items: List[CargoItem]
-    rail_lock_upgrade: bool
+    rail_lock_upgrade: Optional[bool] = False
 
 class BookingResponse(BaseModel):
     booking_id: str

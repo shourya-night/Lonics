@@ -21,10 +21,12 @@ import {
   LogOut,
   ArrowLeft,
   Building2,
+  Train,
 } from 'lucide-react';
 import QuotingConsole from './QuotingConsole';
 import MultiSignalTracker from './MultiSignalTracker';
 import ConsolidationMonitor from './ConsolidationMonitor';
+import RailContainerBookingModal from './rail/RailContainerBookingModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { UserProfile } from '../lib/supabase';
 
@@ -422,10 +424,17 @@ export default function MissionControlDeck({
 }: MissionControlDeckProps) {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [isDiagnosticsExpanded, setIsDiagnosticsExpanded] = useState(false);
+  const [isRailBookingModalOpen, setIsRailBookingModalOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    const handleOpenRail = () => setIsRailBookingModalOpen(true);
+    window.addEventListener('lonics:open-rail-booking', handleOpenRail);
+    return () => window.removeEventListener('lonics:open-rail-booking', handleOpenRail);
+  }, []);
 
   const [agents, setAgents] = useState<Record<AgentId, AgentState>>(INITIAL_AGENTS);
   const [links] = useState<Record<AgentId, Record<AgentId, AgentLink>>>(generateMockLinks);
@@ -556,6 +565,16 @@ export default function MissionControlDeck({
                 <span>Public Site</span>
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => setIsRailBookingModalOpen(true)}
+              className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 transition duration-200 shadow-sm flex items-center gap-1.5 cursor-pointer"
+              title="View Rail Container Availability & Book Slots"
+            >
+              <Train className="h-3.5 w-3.5" />
+              <span>Rail Availability</span>
+            </button>
 
             <button
               type="button"
@@ -915,6 +934,14 @@ export default function MissionControlDeck({
             );
           })}
         </div>
+
+        {/* Rail Container Availability & Reservation Modal */}
+        <RailContainerBookingModal
+          isOpen={isRailBookingModalOpen}
+          onClose={() => setIsRailBookingModalOpen(false)}
+          currentTheme={theme}
+          onToggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+        />
 
       </div>
     </div>

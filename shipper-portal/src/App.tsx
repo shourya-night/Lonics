@@ -72,6 +72,19 @@ function AppShell() {
             country: authUser.user_metadata?.country || 'India',
             onboarding_completed: !!authUser.user_metadata?.onboarding_completed,
           });
+        } else if (sessionStorage.getItem('lonics_demo_session') === 'true') {
+          setUser({ id: 'demo-user-01', email: 'shipper@lonics-logistics.in' });
+          setProfile({
+            user_id: 'demo-user-01',
+            full_name: 'Verified SME Shipper',
+            email: 'shipper@lonics-logistics.in',
+            business_name: 'Bharat Precision Assemblies Ltd.',
+            business_categories: ['Engineering & Automotive'],
+            city: 'Mumbai',
+            state: 'Maharashtra',
+            country: 'India',
+            onboarding_completed: true,
+          });
         } else {
           setProfile(null);
         }
@@ -114,6 +127,7 @@ function AppShell() {
       setIsUnlocked(false);
       try {
         sessionStorage.removeItem('lonics_preview_unlocked');
+        sessionStorage.removeItem('lonics_demo_session');
       } catch {
         // ignore
       }

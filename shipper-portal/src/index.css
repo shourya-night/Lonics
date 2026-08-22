@@ -42,7 +42,7 @@
     --primary-foreground: #FFFFFF;
     --secondary: #0A192F;
     --secondary-foreground: #F8FAFC;
-    
+
     --card: #FFFFFF;
     --card-foreground: #0A192F;
     --popover: #FFFFFF;
@@ -55,7 +55,7 @@
     --destructive-foreground: #FFFFFF;
     --input: #FFFFFF;
     --ring: #0284C7;
-    
+
     --radius: 0.75rem;
   }
 
@@ -67,7 +67,7 @@
     --primary-foreground: #0A192F;
     --secondary: #38BDF8;
     --secondary-foreground: #0A192F;
-    
+
     --card: #0F172A;
     --card-foreground: #F8FAFC;
     --popover: #0F172A;
@@ -88,6 +88,7 @@
     opacity: 0;
     transform: translateY(6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -99,7 +100,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, ::before, ::after {
+
+  *,
+  ::before,
+  ::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -111,9 +115,11 @@
   * {
     border-color: var(--border);
   }
+
   html {
     scroll-behavior: smooth;
   }
+
   body {
     background-color: var(--background);
     color: var(--foreground);

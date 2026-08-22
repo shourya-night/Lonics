@@ -1,5 +1,5 @@
 import { useState, useMemo, memo } from 'react';
-import { Camera, Plus, Trash2, ShieldCheck, HelpCircle, Loader2, IndianRupee, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Camera, Plus, Trash2, ShieldCheck, HelpCircle, Loader2, IndianRupee, ChevronLeft, ChevronRight, Train } from 'lucide-react';
 import { bookFreight } from '../utils/api';
 import type { BookingResponse, BookingRequest } from '../utils/api';
 import AICargoScanner from './AICargoScanner';
@@ -557,6 +557,19 @@ function QuotingConsole({ onBookingCreated }: QuotingConsoleProps) {
                 </p>
               </div>
             </div>
+
+            {/* Quick trigger for Rail Container Availability */}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('lonics:open-rail-booking'))}
+              className="w-full py-2 px-3 rounded-lg text-xs font-mono border border-primary/30 bg-primary/5 text-primary hover:bg-primary/15 transition flex items-center justify-between cursor-pointer"
+            >
+              <span className="flex items-center gap-1.5 font-bold">
+                <Train className="h-3.5 w-3.5" />
+                <span>Live Rail Container Departures</span>
+              </span>
+              <span className="text-[10px] underline">Check Slots →</span>
+            </button>
           </div>
 
           {/* Rail-Lock Toggle Switch */}

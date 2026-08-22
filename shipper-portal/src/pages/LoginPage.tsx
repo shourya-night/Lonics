@@ -148,6 +148,19 @@ export default function LoginPage() {
             )}
             <span>Continue with Google</span>
           </button>
+
+          {/* Quick Demo Access for Testing & Evaluation */}
+          <button
+            type="button"
+            onClick={() => {
+              sessionStorage.setItem('lonics_demo_session', 'true');
+              sessionStorage.setItem('lonics_preview_unlocked', 'true');
+              navigate('/app');
+            }}
+            className="w-full h-11 px-4 rounded-xl border border-primary/40 bg-primary/10 hover:bg-primary/15 text-primary font-mono font-semibold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+          >
+            <span>⚡ Explore Mission Control Deck (Demo Shipper)</span>
+          </button>
         </div>
 
         {/* Security / Enterprise Notice */}

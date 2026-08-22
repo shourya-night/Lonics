@@ -215,7 +215,68 @@ def are_incompatible(class_a: str, class_b: str) -> bool:
     return False
 
 # In-memory shipments cache acting as standard dual-state fallback
-shipments_fallback_cache: Dict[str, dict] = {}
+shipments_fallback_cache: Dict[str, dict] = {
+    "BK-8930": {
+        "booking_id": "BK-8930",
+        "assigned_window_id": "WIN-PRIMARY-DFC",
+        "chargeable_weight": 1850.0,
+        "total_cbm": 12.4,
+        "final_quote": 16650.0,
+        "status": "IN_TRANSIT",
+        "stage": "Line-Haul DFC Transit",
+        "transit_progress": 65.0,
+        "shipper_id": "SHIP-AUTOPARTS-01",
+        "origin": "Mumbai Port DFC Gate-1",
+        "destination": "Delhi ICD Terminal-3",
+        "commodity": "Precision Engineering & Automotive",
+        "created_at": datetime.utcnow().isoformat() + "Z"
+    },
+    "BK-4102": {
+        "booking_id": "BK-4102",
+        "assigned_window_id": "WIN-NORTH-CORRIDOR",
+        "chargeable_weight": 2400.0,
+        "total_cbm": 14.8,
+        "final_quote": 21600.0,
+        "status": "REROUTED_GRAP_ACTIVE",
+        "stage": "First-Mile Feeder Dispatch",
+        "transit_progress": 28.0,
+        "shipper_id": "SHIP-TEXTILES-02",
+        "origin": "Ludhiana ICD Yard",
+        "destination": "Mumbai Port DFC Gate-1",
+        "commodity": "Textiles & Garment Consignments",
+        "created_at": datetime.utcnow().isoformat() + "Z"
+    },
+    "BK-7729": {
+        "booking_id": "BK-7729",
+        "assigned_window_id": "WIN-SOUTH-EXPRESS",
+        "chargeable_weight": 3100.0,
+        "total_cbm": 18.2,
+        "final_quote": 27900.0,
+        "status": "IN_TRANSIT",
+        "stage": "Line-Haul Rail Corridor",
+        "transit_progress": 48.0,
+        "shipper_id": "SHIP-ELECTRONICS-03",
+        "origin": "Dadri Multi-Modal Hub",
+        "destination": "Chennai Port Container Terminal",
+        "commodity": "Industrial Electronics & Sensors",
+        "created_at": datetime.utcnow().isoformat() + "Z"
+    },
+    "BK-9514": {
+        "booking_id": "BK-9514",
+        "assigned_window_id": "WIN-EAST-CONNECT",
+        "chargeable_weight": 1400.0,
+        "total_cbm": 8.6,
+        "final_quote": 12600.0,
+        "status": "IN_TRANSIT",
+        "stage": "Last-Mile Urban Delivery",
+        "transit_progress": 91.0,
+        "shipper_id": "SHIP-HARDWARE-04",
+        "origin": "Ahmedabad Logistics Hub",
+        "destination": "Kolkata Port Docks",
+        "commodity": "Electrical Switchgear & Fasteners",
+        "created_at": datetime.utcnow().isoformat() + "Z"
+    }
+}
 
 @app.post("/api/bookings", response_model=BookingResponse, status_code=201)
 @app.post("/api/v1/freight/book", response_model=BookingResponse, status_code=201)
@@ -456,6 +517,35 @@ async def scan_tracking(
         raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Scan processing failed: {str(e)}")
+
+@app.get("/api/tracking")
+@app.get("/api/v1/freight/shipments")
+async def get_all_shipments_tracking():
+    """
+    GET endpoint to retrieve unified real-time tracking signals for all active shipments.
+    """
+    results = []
+    seen_ids = set()
+    try:
+        from services import supabase
+        res = supabase.table("shipments").select("*").execute()
+        if res.data and len(res.data) > 0:
+            for s in res.data:
+                bid = s.get("booking_id")
+                if bid and bid not in seen_ids:
+                    seen_ids.add(bid)
+                    tracking_info = await get_tracking(bid)
+                    results.append(tracking_info)
+    except Exception as e:
+        print(f"[DB SHIPMENTS ERROR] Failed to fetch all shipments from DB: {e}")
+
+    for bid in shipments_fallback_cache:
+        if bid not in seen_ids:
+            seen_ids.add(bid)
+            tracking_info = await get_tracking(bid)
+            results.append(tracking_info)
+
+    return results
 
 @app.get("/api/tracking/{booking_id}")
 async def get_tracking(booking_id: str):

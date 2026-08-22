@@ -52,6 +52,33 @@ export interface ContainerStatusResponse {
   max_kg_threshold: number;
 }
 
+export interface ShipmentTrackingRecord {
+  booking_id: string;
+  status: string;
+  assigned_window_id: string;
+  origin: string;
+  destination: string;
+  commodity?: string;
+  route: string[];
+  status_description: string;
+  telemetry: {
+    current_coordinates: {
+      lat: number;
+      lng: number;
+    };
+    speed_kmh: number;
+    heading: string;
+    last_ping: string;
+    signal_source: string;
+  };
+  aqi_metrics: {
+    aqi: number;
+    grap_stage: string;
+    active_restrictions: string;
+    api_source: string;
+  };
+}
+
 export interface CancellationResponse {
   status: string;
   booking_id: string;
@@ -167,6 +194,21 @@ export async function getContainerStatus(): Promise<ContainerStatusResponse> {
 
   if (!res.ok) {
     throw new Error(`Failed to fetch container status: ${res.statusText}`);
+  }
+
+  return res.json();
+}
+
+export async function getAllShipmentsTracking(): Promise<ShipmentTrackingRecord[]> {
+  const res = await fetch(`${SERVER_URL}/api/tracking`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch all shipments: ${res.statusText}`);
   }
 
   return res.json();

@@ -5,6 +5,9 @@ import LoginPage from './pages/LoginPage';
 import OnboardingPage from './pages/OnboardingPage';
 import MissionControlDeck from './components/MissionControlDeck';
 import OperationalPreviewScreen from './components/preview/OperationalPreviewScreen';
+import OperatorLoginPage from './pages/OperatorLoginPage';
+import DriverDashboard from './pages/DriverDashboard';
+import GroundOpsDashboard from './pages/GroundOpsDashboard';
 import { fetchCurrentProfile, signOutUser, supabase } from './lib/supabase';
 import type { UserProfile } from './lib/supabase';
 import { Loader2 } from 'lucide-react';
@@ -184,6 +187,23 @@ function AppShell() {
               )
             }
           />
+          <Route path="/operators/login" element={<OperatorLoginPage />} />
+          <Route
+            path="/operators/driver"
+            element={
+              <DriverRoleGuard>
+                <DriverDashboard />
+              </DriverRoleGuard>
+            }
+          />
+          <Route
+            path="/operators/ground"
+            element={
+              <GroundRoleGuard>
+                <GroundOpsDashboard />
+              </GroundRoleGuard>
+            }
+          />
           <Route path="/dashboard" element={<Navigate to="/app" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -195,6 +215,34 @@ function AppShell() {
       )}
     </div>
   );
+}
+
+// ──────────────────────────────────────────────────────────
+// Operator Role Guards
+// ──────────────────────────────────────────────────────────
+
+function getOperatorRole(): string | null {
+  try {
+    return sessionStorage.getItem('lonics_operator_role');
+  } catch {
+    return null;
+  }
+}
+
+function DriverRoleGuard({ children }: { children: React.ReactNode }) {
+  const role = getOperatorRole();
+  if (role !== 'DRIVER') {
+    return <Navigate to="/operators/login" replace />;
+  }
+  return <>{children}</>;
+}
+
+function GroundRoleGuard({ children }: { children: React.ReactNode }) {
+  const role = getOperatorRole();
+  if (role !== 'GROUND_OPERATOR') {
+    return <Navigate to="/operators/login" replace />;
+  }
+  return <>{children}</>;
 }
 
 export default function App() {

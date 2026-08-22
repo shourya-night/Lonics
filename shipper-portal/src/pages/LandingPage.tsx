@@ -841,13 +841,20 @@ export default function LandingPage() {
             Where it needs to go. When it needs to arrive. Lonics handles the coordination.
           </p>
 
-          <div className="pt-4">
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
               onClick={() => navigate('/login')}
               className="inline-flex items-center justify-center px-10 py-4 rounded-xl text-base font-semibold text-[#0A192F] bg-[#38BDF8] hover:bg-[#7DD3FC] transition shadow-lg active:scale-[0.99] cursor-pointer"
             >
               Get Started
               <ArrowRight className="ml-2 h-5 w-5" />
+            </button>
+            <button
+              onClick={() => navigate('/operators/login')}
+              id="landing-operators-login-btn"
+              className="inline-flex items-center justify-center px-8 py-4 rounded-xl text-base font-semibold text-[#38BDF8] border border-[#38BDF8]/40 hover:bg-[#38BDF8]/10 transition active:scale-[0.99] cursor-pointer"
+            >
+              Operators Login →
             </button>
           </div>
         </div>

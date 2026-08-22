@@ -1,7 +1,52 @@
-import React, { useState, useEffect, useMemo, memo } from 'react';
-import { Wifi, WifiOff, AlertTriangle, RefreshCw, Terminal, CheckCircle, Ban, Loader2, Camera } from 'lucide-react';
-import { cancelFreight, getTrackingStatus } from '../utils/api';
-import SealVerifier from './SealVerifier';
+import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
+import {
+  Wifi,
+  WifiOff,
+  AlertTriangle,
+  RefreshCw,
+  Terminal,
+  CheckCircle,
+  Ban,
+  Loader2,
+  TrendingDown,
+  LayoutGrid,
+  ArrowRight,
+  Radio,
+  Layers,
+} from 'lucide-react';
+import { cancelFreight, getAllShipmentsTracking, type ShipmentTrackingRecord } from '../utils/api';
+import CancellationReviewModal from './CancellationReviewModal';
+import { formatINR, type CancellationRefundSummary } from '../utils/cancellationEngine';
+import { publishOperationalEvent } from '../services/operationalEvents';
+
+export interface TrackedShipment {
+  bookingId: string;
+  origin: string;
+  destination: string;
+  commodity: string;
+  status: string; // 'IN_TRANSIT' | 'REROUTED_GRAP_ACTIVE' | 'DELIVERED' | 'CANCELLED' | 'RESERVATION_INITIATED'
+  stage: string;
+  transitProgress: number; // 0 to 100
+  uptimeSla: string;
+  speedKmh: number;
+  signalSource: string;
+  heading: string;
+  assignedWindowId: string;
+  currentCoordinates: { lat: number; lng: number };
+  aqiMetrics: {
+    aqi: number;
+    grapStage: string;
+    activeRestrictions: string;
+    apiSource: string;
+  };
+  route: string[];
+  statusDescription: string;
+  isDelayed: boolean;
+  isCancelled: boolean;
+  cancellationRefundAmount?: number | null;
+  totalBookingAmount: number;
+  lastPing: string;
+}
 
 interface TelemetrySignal {
   layer: string;
@@ -13,33 +58,158 @@ interface TelemetrySignal {
 
 interface KafkaEvent {
   timestamp: string;
+  bookingId: string;
   partition: number;
   offset: number;
   message: string;
   severity: 'info' | 'warn' | 'error' | 'success';
 }
 
-const KafkaQueueFeed = React.memo(function KafkaQueueFeed({ kafkaLogs }: { kafkaLogs: KafkaEvent[] }) {
+const INITIAL_SHIPMENTS: TrackedShipment[] = [
+  {
+    bookingId: 'BK-8930',
+    origin: 'Mumbai Port DFC Gate-1',
+    destination: 'Delhi ICD Terminal-3',
+    commodity: 'Precision Engineering & Automotive',
+    status: 'IN_TRANSIT',
+    stage: 'Line-Haul DFC Transit',
+    transitProgress: 65,
+    uptimeSla: 'Normal',
+    speedKmh: 55,
+    signalSource: 'FOIS_Pravah_Live',
+    heading: 'North-East',
+    assignedWindowId: 'WIN-PRIMARY-DFC',
+    currentCoordinates: { lat: 22.84, lng: 74.52 },
+    aqiMetrics: {
+      aqi: 142,
+      grapStage: 'STAGE_I_MODERATE',
+      activeRestrictions: 'None',
+      apiSource: 'Open-Meteo Air Quality',
+    },
+    route: ['Mumbai Port DFC Gate-1', 'Dadri ICD Gateway', 'Delhi ICD Terminal-3'],
+    statusDescription: 'Western Dedicated Freight Corridor (W-DFC) line-haul block dispatch.',
+    isDelayed: false,
+    isCancelled: false,
+    totalBookingAmount: 16650,
+    lastPing: new Date().toISOString(),
+  },
+  {
+    bookingId: 'BK-4102',
+    origin: 'Ludhiana ICD Yard',
+    destination: 'Mumbai Port DFC Gate-1',
+    commodity: 'Textiles & Industrial Goods',
+    status: 'REROUTED_GRAP_ACTIVE',
+    stage: 'First-Mile Feeder Dispatch',
+    transitProgress: 28,
+    uptimeSla: 'Re-Route Split (+45m)',
+    speedKmh: 38,
+    signalSource: 'NTES_Fallback_Station',
+    heading: 'South-West',
+    assignedWindowId: 'WIN-NORTH-CORRIDOR',
+    currentCoordinates: { lat: 30.90, lng: 75.85 },
+    aqiMetrics: {
+      aqi: 385,
+      grapStage: 'STAGE_III_SEVERE',
+      activeRestrictions: 'Commercial diesel ban in NCR; EV split required',
+      apiSource: 'Open-Meteo Air Quality',
+    },
+    route: ['Ludhiana ICD Yard', 'Electric-LCV Split Gate (Dadri)', 'Mumbai Port DFC Gate-1'],
+    statusDescription: 'NCR Stage-III GRAP restriction active. Load split into electric feeder fleet at Dadri.',
+    isDelayed: false,
+    isCancelled: false,
+    totalBookingAmount: 21600,
+    lastPing: new Date().toISOString(),
+  },
+  {
+    bookingId: 'BK-7729',
+    origin: 'Dadri Multi-Modal Hub',
+    destination: 'Chennai Port Container Terminal',
+    commodity: 'Industrial Electronics & Sensors',
+    status: 'IN_TRANSIT',
+    stage: 'Line-Haul Rail Corridor',
+    transitProgress: 48,
+    uptimeSla: 'Normal',
+    speedKmh: 62,
+    signalSource: 'FOIS_Pravah_Live',
+    heading: 'South-East',
+    assignedWindowId: 'WIN-SOUTH-EXPRESS',
+    currentCoordinates: { lat: 20.45, lng: 78.90 },
+    aqiMetrics: {
+      aqi: 118,
+      grapStage: 'STAGE_I_MODERATE',
+      activeRestrictions: 'None',
+      apiSource: 'Open-Meteo Air Quality',
+    },
+    route: ['Dadri Multi-Modal Hub', 'Nagpur Junction Yard', 'Chennai Port Container Terminal'],
+    statusDescription: 'Express Container Train Operator (CTO) block moving via Grand Trunk freight spine.',
+    isDelayed: false,
+    isCancelled: false,
+    totalBookingAmount: 27900,
+    lastPing: new Date().toISOString(),
+  },
+  {
+    bookingId: 'BK-9514',
+    origin: 'Ahmedabad Logistics Hub',
+    destination: 'Kolkata Port Docks',
+    commodity: 'Electrical Switchgear & Fasteners',
+    status: 'IN_TRANSIT',
+    stage: 'Last-Mile Urban Delivery',
+    transitProgress: 91,
+    uptimeSla: 'Normal',
+    speedKmh: 28,
+    signalSource: 'FOIS_Pravah_Live',
+    heading: 'East',
+    assignedWindowId: 'WIN-EAST-CONNECT',
+    currentCoordinates: { lat: 22.57, lng: 88.36 },
+    aqiMetrics: {
+      aqi: 165,
+      grapStage: 'STAGE_II_POOR',
+      activeRestrictions: 'None',
+      apiSource: 'Open-Meteo Air Quality',
+    },
+    route: ['Ahmedabad Logistics Hub', 'Durgapur Freight Terminal', 'Kolkata Port Docks'],
+    statusDescription: 'Approaching destination container yard. Last-mile gate delivery window active.',
+    isDelayed: false,
+    isCancelled: false,
+    totalBookingAmount: 12600,
+    lastPing: new Date().toISOString(),
+  },
+];
+
+const KafkaQueueFeed = React.memo(function KafkaQueueFeed({
+  kafkaLogs,
+  selectedId,
+}: {
+  kafkaLogs: KafkaEvent[];
+  selectedId: string | null;
+}) {
+  const filteredLogs = useMemo(() => {
+    if (!selectedId) return kafkaLogs;
+    return kafkaLogs.filter((l) => l.bookingId === selectedId || l.bookingId === 'GLOBAL');
+  }, [kafkaLogs, selectedId]);
+
   return (
-    <div className="bg-background border border-slate-200 dark:border-zinc-800 rounded-lg p-3 font-mono text-[10px] space-y-2 max-h-[200px] overflow-y-auto select-none">
-      {kafkaLogs.length === 0 ? (
+    <div className="bg-background border border-slate-200 dark:border-zinc-800 rounded-lg p-3 font-mono text-[10px] space-y-2 max-h-[220px] overflow-y-auto select-none">
+      {filteredLogs.length === 0 ? (
         <div className="text-muted-foreground text-center py-6">
-          No active event triggers in Kafka Partition queue
+          No active event triggers in Kafka Partition queue for {selectedId || 'selected scope'}
         </div>
       ) : (
-        kafkaLogs.map((log, index) => (
+        filteredLogs.map((log, index) => (
           <div key={index} className="border-b border-slate-200 dark:border-zinc-800 pb-1.5 last:border-b-0">
             <div className="flex justify-between items-center text-[9px] mb-0.5">
-              <span className={`font-bold uppercase ${
-                log.severity === 'error' 
-                  ? 'text-rose-500 dark:text-rose-400' 
-                  : log.severity === 'warn' 
-                    ? 'text-amber-500 dark:text-amber-400' 
+              <span
+                className={`font-bold uppercase ${
+                  log.severity === 'error'
+                    ? 'text-rose-500 dark:text-rose-400'
+                    : log.severity === 'warn'
+                    ? 'text-amber-500 dark:text-amber-400'
                     : log.severity === 'success'
-                      ? 'text-emerald-500 dark:text-emerald-400'
-                      : 'text-cyan-500 dark:text-orange-500'
-              }`}>
-                {log.severity} • Partition {log.partition} • Offset {log.offset}
+                    ? 'text-emerald-500 dark:text-emerald-400'
+                    : 'text-cyan-500 dark:text-orange-500'
+                }`}
+              >
+                {log.severity} • {log.bookingId} • P{log.partition}:O{log.offset}
               </span>
               <span className="text-muted-foreground">{log.timestamp}</span>
             </div>
@@ -51,246 +221,335 @@ const KafkaQueueFeed = React.memo(function KafkaQueueFeed({ kafkaLogs }: { kafka
   );
 });
 
-interface MultiSignalTrackerProps {
+export interface MultiSignalTrackerProps {
   activeBookingId?: string | null;
 }
 
-function MultiSignalTracker({ activeBookingId }: MultiSignalTrackerProps) {
-  const [isDelayed, setIsDelayed] = useState(false);
-  const [transitProgress, setTransitProgress] = useState(65);
-  const [kafkaLogs, setKafkaLogs] = useState<KafkaEvent[]>([]);
+export function MultiSignalTracker({ activeBookingId }: MultiSignalTrackerProps) {
+  // Shipments state array
+  const [shipments, setShipments] = useState<TrackedShipment[]>(INITIAL_SHIPMENTS);
+  
+  // Selected shipment ID or 'OVERVIEW'
+  const [selectedBookingId, setSelectedBookingId] = useState<string | 'OVERVIEW'>('BK-8930');
+  
+  // Terminal sub-tabs: signals vs kafka logs
   const [activeTab, setActiveTab] = useState<'signals' | 'kafka'>('signals');
   
+  // Kafka logs
+  const [kafkaLogs, setKafkaLogs] = useState<KafkaEvent[]>([]);
+
+  // Cancellation Review Modal state
+  const [cancellingShipment, setCancellingShipment] = useState<TrackedShipment | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [cancelStatus, setCancelStatus] = useState<string | null>(null);
 
-  // Live API states
-  const [trackingData, setTrackingData] = useState<any>(null);
-  const [isScanningOCR, setIsScanningOCR] = useState(false);
-  const [scanResultMsg, setScanResultMsg] = useState<string | null>(null);
-
-  // Fetch tracking status periodically
+  // Sync activeBookingId prop from QuotingConsole or external triggers
   useEffect(() => {
-    if (!activeBookingId) {
-      setTrackingData(null);
-      return;
-    }
+    if (!activeBookingId) return;
 
-    const fetchTracking = async () => {
+    setShipments((prev) => {
+      const exists = prev.find((s) => s.bookingId === activeBookingId);
+      if (exists) return prev;
+
+      const newShipment: TrackedShipment = {
+        bookingId: activeBookingId,
+        origin: 'Mumbai Port DFC Gate-1',
+        destination: 'Delhi ICD Terminal-3',
+        commodity: 'General Consolidated Cargo',
+        status: 'RESERVATION_INITIATED',
+        stage: 'First-Mile Dispatch Ready',
+        transitProgress: 5,
+        uptimeSla: 'Normal',
+        speedKmh: 0,
+        signalSource: 'FOIS_Pravah_Live',
+        heading: 'North-East',
+        assignedWindowId: 'WIN-NEW-DISPATCH',
+        currentCoordinates: { lat: 19.076, lng: 72.8777 },
+        aqiMetrics: {
+          aqi: 135,
+          grapStage: 'STAGE_I_MODERATE',
+          activeRestrictions: 'None',
+          apiSource: 'Open-Meteo Air Quality',
+        },
+        route: ['Mumbai Port DFC Gate-1', 'Dadri ICD Gateway', 'Delhi ICD Terminal-3'],
+        statusDescription: 'New booking confirmed. Container slot locked into upcoming line-haul departure.',
+        isDelayed: false,
+        isCancelled: false,
+        totalBookingAmount: 14500,
+        lastPing: new Date().toISOString(),
+      };
+      return [newShipment, ...prev];
+    });
+
+    setSelectedBookingId(activeBookingId);
+  }, [activeBookingId]);
+
+  // Poll real backend database / endpoint for live updates
+  useEffect(() => {
+    const fetchLiveShipments = async () => {
       try {
-        const data = await getTrackingStatus(activeBookingId);
-        setTrackingData(data);
-        
-        if (data.status === 'DELIVERED') {
-          setTransitProgress(100);
-        } else if (data.status === 'REROUTED_GRAP_ACTIVE') {
-          setTransitProgress(82);
-        } else if (data.status === 'CANCELLED') {
-          setTransitProgress(0);
-        } else {
-          setTransitProgress(65);
+        const liveRecords: ShipmentTrackingRecord[] = await getAllShipmentsTracking();
+        if (Array.isArray(liveRecords) && liveRecords.length > 0) {
+          setShipments((prev) => {
+            const updated = [...prev];
+            for (const record of liveRecords) {
+              const idx = updated.findIndex((s) => s.bookingId === record.booking_id);
+              const isRerouted = record.status === 'REROUTED_GRAP_ACTIVE';
+              const isDelivered = record.status === 'DELIVERED';
+              const isCancelled = record.status === 'CANCELLED';
+
+              const computedProgress = isDelivered
+                ? 100
+                : isCancelled
+                ? 0
+                : isRerouted
+                ? 82
+                : idx >= 0
+                ? updated[idx].transitProgress
+                : 65;
+
+              const stageName = isDelivered
+                ? 'Arrived & Verified'
+                : isCancelled
+                ? 'Cargo Cancelled'
+                : isRerouted
+                ? 'GRAP Reroute Active'
+                : computedProgress < 30
+                ? 'First-Mile Feeder Dispatch'
+                : computedProgress > 85
+                ? 'Last-Mile Urban Delivery'
+                : 'Line-Haul DFC Transit';
+
+              const shipmentObj: TrackedShipment = {
+                bookingId: record.booking_id,
+                origin: record.origin || 'Mumbai Port DFC Gate-1',
+                destination: record.destination || 'Delhi ICD Terminal-3',
+                commodity: record.commodity || (idx >= 0 ? updated[idx].commodity : 'Consolidated LCL Freight'),
+                status: record.status || 'IN_TRANSIT',
+                stage: stageName,
+                transitProgress: computedProgress,
+                uptimeSla: isCancelled
+                  ? 'Saga Reversal Complete'
+                  : isRerouted
+                  ? 'Re-Route Split (+45m)'
+                  : idx >= 0 && updated[idx].isDelayed
+                  ? 'Violated (+2.4h)'
+                  : 'Normal',
+                speedKmh: record.telemetry?.speed_kmh || (isRerouted ? 38 : 55),
+                signalSource: record.telemetry?.signal_source || 'FOIS_Pravah_Live',
+                heading: record.telemetry?.heading || 'North-East',
+                assignedWindowId: record.assigned_window_id || 'WIN-PRIMARY-DFC',
+                currentCoordinates: record.telemetry?.current_coordinates || { lat: 22.84, lng: 74.52 },
+                aqiMetrics: {
+                  aqi: record.aqi_metrics?.aqi || 140,
+                  grapStage: record.aqi_metrics?.grap_stage || 'STAGE_I_MODERATE',
+                  activeRestrictions: record.aqi_metrics?.active_restrictions || 'None',
+                  apiSource: record.aqi_metrics?.api_source || 'Open-Meteo Air Quality',
+                },
+                route: record.route || [record.origin, 'Dadri ICD Gateway', record.destination],
+                statusDescription: record.status_description || 'Live multimodal freight rail transit.',
+                isDelayed: idx >= 0 ? updated[idx].isDelayed : false,
+                isCancelled: isCancelled || (idx >= 0 ? updated[idx].isCancelled : false),
+                cancellationRefundAmount: idx >= 0 ? updated[idx].cancellationRefundAmount : null,
+                totalBookingAmount: idx >= 0 ? updated[idx].totalBookingAmount : 16650,
+                lastPing: record.telemetry?.last_ping || new Date().toISOString(),
+              };
+
+              if (idx >= 0) {
+                updated[idx] = { ...updated[idx], ...shipmentObj };
+              } else {
+                updated.push(shipmentObj);
+              }
+            }
+            return updated;
+          });
         }
       } catch (err) {
-        console.error('[Telemetry Fusion] API poll failure:', err);
+        // Fallback to active local state if network poll fails
       }
     };
 
-    fetchTracking();
-    const interval = setInterval(fetchTracking, 5000);
+    fetchLiveShipments();
+    const interval = setInterval(fetchLiveShipments, 6000);
     return () => clearInterval(interval);
-  }, [activeBookingId]);
+  }, []);
 
-  // Sync database updates into Kafka telemetry feed logs
-  useEffect(() => {
-    if (!trackingData) return;
-
-    const time = () => new Date().toLocaleTimeString();
-    const currentCoord = trackingData.telemetry.current_coordinates;
-    const keyMsg = `[FUSION] Coordinates: Lat ${currentCoord.lat}, Lng ${currentCoord.lng} • Signal: ${trackingData.telemetry.signal_source}`;
-    
-    // Deduplicate log entries
-    setKafkaLogs((prev) => {
-      if (prev.length > 0 && prev[0].message.includes(currentCoord.lat.toString())) {
-        return prev;
-      }
-
-      const freshLogs: KafkaEvent[] = [
-        {
-          timestamp: time(),
-          partition: 3,
-          offset: Math.floor(Math.random() * 50000) + 120000,
-          message: keyMsg,
-          severity: 'info'
-        }
-      ];
-
-      if (trackingData.status === 'REROUTED_GRAP_ACTIVE') {
-        freshLogs.push({
-          timestamp: time(),
-          partition: 1,
-          offset: Math.floor(Math.random() * 1000) + 5000,
-          message: `[GRAP SHIFT] Active AQI restriction triggers Stage III split routing. Feeder vehicles restricted to electric power only.`,
-          severity: 'warn'
-        });
-      }
-
-      if (trackingData.status === 'DELIVERED') {
-        freshLogs.push({
-          timestamp: time(),
-          partition: 0,
-          offset: Math.floor(Math.random() * 1000) + 9000,
-          message: `[DELIVERY] Final gate seal scanned and matched. Cargo status closed.`,
-          severity: 'success'
-        });
-      }
-
-      return [...freshLogs, ...prev.slice(0, 15)];
-    });
-  }, [trackingData]);
-
-  // Triggered logs on simulator click for delay
-  const triggerKafkaDelayEvents = () => {
-    const time = () => new Date().toLocaleTimeString();
-    const newLogs: KafkaEvent[] = [
-      { timestamp: time(), partition: 2, offset: 489201, message: 'FOIS API Connection failed: Connection pool exhausted (TimeoutException)', severity: 'error' },
-      { timestamp: time(), partition: 2, offset: 489202, message: 'ULIP route resolver triggered fallback path search', severity: 'info' },
-      { timestamp: time(), partition: 4, offset: 902148, message: '[KAFKA-RETRY-1] Socket read timed out. Retrying execution context in 2500ms...', severity: 'warn' },
-      { timestamp: time(), partition: 4, offset: 902149, message: '[KAFKA-RETRY-2] Re-assigning consumer partition offsets from Dadri Node...', severity: 'warn' },
-      { timestamp: time(), partition: 2, offset: 489205, message: 'Fusing NTES telemetry stream. Active confidence downgraded to 70%', severity: 'info' },
-    ];
-    setKafkaLogs((prev) => [...newLogs, ...prev.slice(0, 10)]);
-  };
-
-  const triggerKafkaRecoveryEvents = () => {
-    const time = () => new Date().toLocaleTimeString();
-    const newLogs: KafkaEvent[] = [
-      { timestamp: time(), partition: 2, offset: 489210, message: 'FOIS API connection restored on fallback server #2', severity: 'info' },
-      { timestamp: time(), partition: 2, offset: 489211, message: 'Consolidated geo-coordinates resolved successfully', severity: 'info' },
-      { timestamp: time(), partition: 4, offset: 902155, message: 'Kafka consumer offset synchronized. Buffer size = 0', severity: 'info' },
-    ];
-    setKafkaLogs((prev) => [...newLogs, ...prev.slice(0, 10)]);
-  };
-
-  // Toggle Delay Simulation
-  const handleToggleDelay = () => {
-    const targetState = !isDelayed;
-    setIsDelayed(targetState);
-    if (targetState) {
-      triggerKafkaDelayEvents();
-      setActiveTab('kafka');
-    } else {
-      triggerKafkaRecoveryEvents();
+  // Currently selected shipment object (if not OVERVIEW)
+  const currentShipment: TrackedShipment = useMemo(() => {
+    if (selectedBookingId === 'OVERVIEW') {
+      return shipments[0] || INITIAL_SHIPMENTS[0];
     }
-  };
+    return shipments.find((s) => s.bookingId === selectedBookingId) || shipments[0] || INITIAL_SHIPMENTS[0];
+  }, [shipments, selectedBookingId]);
 
-  // Trigger backend cancellation Saga rollback simulation
-  const handleSimulateCancellation = async () => {
-    const targetBookingId = activeBookingId || 'BK-MOCK-999';
+  // Sync Kafka logs on telemetry pings
+  useEffect(() => {
+    const time = () => new Date().toLocaleTimeString();
+    const newLogs: KafkaEvent[] = shipments.slice(0, 3).map((s, idx) => ({
+      timestamp: time(),
+      bookingId: s.bookingId,
+      partition: idx % 4,
+      offset: Math.floor(Math.random() * 50000) + 120000,
+      message: `[TELEMETRY] Lat ${s.currentCoordinates.lat}, Lng ${s.currentCoordinates.lng} • Speed: ${s.speedKmh} km/h • Signal: ${s.signalSource}`,
+      severity: s.status === 'REROUTED_GRAP_ACTIVE' ? 'warn' : s.isCancelled ? 'error' : 'info',
+    }));
+
+    setKafkaLogs((prev) => [...newLogs, ...prev.slice(0, 18)]);
+  }, [shipments]);
+
+  // Per-Shipment Toggle Delay action
+  const handleToggleDelay = useCallback((targetBookingId: string) => {
+    setShipments((prev) =>
+      prev.map((s) => {
+        if (s.bookingId !== targetBookingId) return s;
+        const newDelay = !s.isDelayed;
+        return {
+          ...s,
+          isDelayed: newDelay,
+          uptimeSla: newDelay ? 'Violated (+2.4h)' : s.status === 'REROUTED_GRAP_ACTIVE' ? 'Re-Route Split (+45m)' : 'Normal',
+        };
+      })
+    );
+
+    const time = () => new Date().toLocaleTimeString();
+    setKafkaLogs((prev) => [
+      {
+        timestamp: time(),
+        bookingId: targetBookingId,
+        partition: 2,
+        offset: 489201,
+        message: `[SIMULATOR] Feeder delay event toggled for ${targetBookingId}. FOIS gateway fallback initiated.`,
+        severity: 'warn',
+      },
+      ...prev,
+    ]);
+  }, []);
+
+  // Per-Shipment Cancellation Confirmation execution
+  const handleConfirmCancellation = useCallback(async (summary: CancellationRefundSummary) => {
+    const targetBookingId = summary.bookingId;
     setIsCancelling(true);
-    setCancelStatus(`Sending cancellation payload for ${targetBookingId}...`);
     setActiveTab('kafka');
 
     try {
+      // 1. Call backend API
       const res = await cancelFreight(targetBookingId);
-      
+
       const time = () => new Date().toLocaleTimeString();
       setKafkaLogs((prev) => [
-        { timestamp: time(), partition: 0, offset: 100, message: `[API] Cancellation request accepted for ${targetBookingId}. Response Status: ${res.status}`, severity: 'info' },
+        {
+          timestamp: time(),
+          bookingId: targetBookingId,
+          partition: 0,
+          offset: 100,
+          message: `[API] Cancellation accepted for ${targetBookingId}. Response: ${res.status}`,
+          severity: 'info',
+        },
         ...prev,
       ]);
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // 2. Publish operational event
+      try {
+        await publishOperationalEvent({
+          eventType: 'CARGO_REJECTED',
+          shipmentId: targetBookingId,
+          operatorId: 'SHIPPER_PORTAL',
+          location: summary.origin,
+          timestamp: new Date().toISOString(),
+          metadata: {
+            cancellationReason: 'Shipper cancellation via review overlay',
+            estimatedRefund: summary.estimatedRefund,
+            deductions: summary.totalDeductions,
+          },
+        });
+      } catch (err) {
+        console.warn('[Tracking] Operational event error:', err);
+      }
+
+      // 3. Step-by-step Saga rollback logs
+      await new Promise((resolve) => setTimeout(resolve, 500));
       setKafkaLogs((prev) => [
-        { timestamp: time(), partition: 1, offset: 101, message: `[SAGA] [Step 1/3] [release_truck_hold] Canceled first-mile feeder truck reservation for ${targetBookingId}.`, severity: 'warn' },
+        {
+          timestamp: time(),
+          bookingId: targetBookingId,
+          partition: 1,
+          offset: 101,
+          message: `[SAGA] [Step 1/3] [release_truck_hold] Released first-mile truck allocation for ${targetBookingId}.`,
+          severity: 'warn',
+        },
         ...prev,
       ]);
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       setKafkaLogs((prev) => [
-        { timestamp: time(), partition: 1, offset: 102, message: `[SAGA] [Step 2/3] [release_cto_slot] Released Container Train Operator (CTO) block allocation for ${targetBookingId}.`, severity: 'warn' },
+        {
+          timestamp: time(),
+          bookingId: targetBookingId,
+          partition: 1,
+          offset: 102,
+          message: `[SAGA] [Step 2/3] [release_cto_slot] Released CTO container train wagon block for ${targetBookingId}.`,
+          severity: 'warn',
+        },
         ...prev,
       ]);
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       setKafkaLogs((prev) => [
-        { timestamp: time(), partition: 1, offset: 103, message: `[SAGA] [Step 3/3] [trigger_secondary_flash_auction] Triggered secondary backhaul spot auction for released CBM space.`, severity: 'success' },
-        { timestamp: time(), partition: 0, offset: 104, message: `[SAGA] Rollback saga completed successfully for booking: ${targetBookingId}`, severity: 'success' },
+        {
+          timestamp: time(),
+          bookingId: targetBookingId,
+          partition: 1,
+          offset: 103,
+          message: `[SAGA] [Step 3/3] [trigger_secondary_flash_auction] Re-auctioned released CBM capacity to Return Exchange queue.`,
+          severity: 'success',
+        },
+        {
+          timestamp: time(),
+          bookingId: targetBookingId,
+          partition: 0,
+          offset: 104,
+          message: `[SAGA] Rollback complete for ${targetBookingId}. Net refund ${formatINR(summary.estimatedRefund)} reversal queued.`,
+          severity: 'success',
+        },
         ...prev,
       ]);
 
-      setCancelStatus(`Cancelled ${targetBookingId}`);
-      setTransitProgress(0);
+      // 4. Update shipment state
+      setShipments((prev) =>
+        prev.map((s) => {
+          if (s.bookingId !== targetBookingId) return s;
+          return {
+            ...s,
+            isCancelled: true,
+            status: 'CANCELLED',
+            stage: 'Cargo Cancelled',
+            transitProgress: 0,
+            uptimeSla: 'Saga Reversal Complete',
+            cancellationRefundAmount: summary.estimatedRefund,
+          };
+        })
+      );
+
+      setCancellingShipment(null);
     } catch (err: any) {
-      console.error(err);
-      setCancelStatus('Failed to cancel');
+      console.error('[MultiSignalTracker] Cancellation failed:', err);
+      throw err;
     } finally {
       setIsCancelling(false);
     }
-  };
+  }, []);
 
-  // Auto-increment progress slightly if not stalled
-  useEffect(() => {
-    if (isDelayed || isCancelling || transitProgress === 0 || transitProgress >= 100 || trackingData) return;
-    const interval = setInterval(() => {
-      setTransitProgress((prev) => (prev >= 100 ? 0 : prev + 0.5));
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [isDelayed, isCancelling, transitProgress, trackingData]);
-
-  // Signals telemetry definition
-  const signals = useMemo<TelemetrySignal[]>(() => {
-    if (trackingData) {
-      return [
-        { 
-          layer: 'FOIS Pravah API', 
-          source: 'Indian Railways Central Gateway', 
-          value: `GPS Resolved: Lat ${trackingData.telemetry.current_coordinates.lat}, Lng ${trackingData.telemetry.current_coordinates.lng} • Velocity: ${trackingData.telemetry.speed_kmh} km/h`, 
-          status: trackingData.status === 'REROUTED_GRAP_ACTIVE' ? 'fallback' : 'active', 
-          latencyMs: 35 
-        },
-        { 
-          layer: 'AQI Metric Engine', 
-          source: 'Open-Meteo Air Quality Live Feed', 
-          value: `AQI: ${trackingData.aqi_metrics.aqi} (${trackingData.aqi_metrics.grap_stage}) • Source: ${trackingData.aqi_metrics.api_source}`, 
-          status: trackingData.status === 'REROUTED_GRAP_ACTIVE' ? 'fallback' : 'active', 
-          latencyMs: 82 
-        },
-        { 
-          layer: 'Active Route Sequence', 
-          source: 'OSRM Dynamic Coordinates', 
-          value: trackingData.route.join(' ➔ '), 
-          status: 'active', 
-          latencyMs: 15 
-        },
-        { 
-          layer: 'Ground Ops OCR', 
-          source: 'OCR camera seal scan verify', 
-          value: `Status: ${trackingData.status} • Window Cache: ${trackingData.assigned_window_id}`, 
-          status: trackingData.status === 'DELIVERED' ? 'active' : 'fallback', 
-          latencyMs: 12 
-        }
-      ];
-    }
-
-    if (isDelayed) {
-      return [
-        { layer: 'FOIS Pravah API', source: 'Indian Railways Central Gateway', value: 'Offline (API Read Timeout)', status: 'offline', latencyMs: 5000 },
-        { layer: 'NTES Station Data', source: 'National Train Enquiry System', value: 'Station: DADRI ICD [DDR] • Train: LCL-EXP-92', status: 'fallback', latencyMs: 124 },
-        { layer: 'CTO Container Feeds', source: 'Container Train Operator RFID', value: 'RFID Segment 42 - Stack Level B2', status: 'active', latencyMs: 45 },
-        { layer: 'Ground Ops OCR', source: 'OCR wagon scanners (ICD Dadri)', value: 'Verified Seal Check: OK • Wagon No: CR-98104', status: 'active', latencyMs: 12 },
-      ];
-    }
-
-    return [
-      { layer: 'FOIS Pravah API', source: 'Indian Railways Central Gateway', value: 'GPS Resolving: Lat 28.53, Lng 77.55 • Velocity: 52 km/h', status: 'active', latencyMs: 24 },
-      { layer: 'NTES Station Data', source: 'National Train Enquiry System', value: 'Station: IN TRANSIT • Next: MARIPAT [MPC]', status: 'active', latencyMs: 18 },
-      { layer: 'CTO Container Feeds', source: 'Container Train Operator RFID', value: 'RFID Segment 42 - Stack Level B2', status: 'active', latencyMs: 38 },
-      { layer: 'Ground Ops OCR', source: 'OCR wagon scanners (ICD Dadri)', value: 'Verified Seal Check: OK • Wagon No: CR-98104', status: 'active', latencyMs: 12 },
-    ];
-  }, [trackingData, isDelayed]);
-
+  // Compute Signal Health Confidence Badge per selected shipment
   const confidenceBadge = useMemo(() => {
-    if (isDelayed) {
+    const s = currentShipment;
+    if (s.isCancelled) {
+      return {
+        label: 'CANCELLED_REFUND_INITIATED',
+        style: 'bg-rose-950/40 text-rose-400 border-rose-800/80 shadow-[0_0_8px_rgba(244,63,94,0.15)]',
+        desc: `Booking cancelled. Saga rollback completed; refund of ${formatINR(s.cancellationRefundAmount || 11250)} dispatched to source SME account.`,
+      };
+    }
+
+    if (s.isDelayed) {
       return {
         label: 'NTES_FALLBACK (70%)',
         style: 'bg-amber-950/40 text-amber-400 border-amber-800/80 shadow-[0_0_8px_rgba(245,158,11,0.15)]',
@@ -298,7 +557,7 @@ function MultiSignalTracker({ activeBookingId }: MultiSignalTrackerProps) {
       };
     }
 
-    if (trackingData?.status === 'REROUTED_GRAP_ACTIVE') {
+    if (s.status === 'REROUTED_GRAP_ACTIVE') {
       return {
         label: 'GRAP_STAGE_3_REROUTE (88%)',
         style: 'bg-[#FF6B00]/10 text-[#FF6B00] border-[#FF6B00]/30 shadow-[0_0_8px_rgba(255,107,0,0.15)]',
@@ -306,11 +565,11 @@ function MultiSignalTracker({ activeBookingId }: MultiSignalTrackerProps) {
       };
     }
 
-    if (transitProgress >= 100 || trackingData?.status === 'DELIVERED') {
+    if (s.transitProgress >= 100 || s.status === 'DELIVERED') {
       return {
-        label: 'LOCAL_VERIFIED_OCR (99%)',
+        label: 'LOCAL_VERIFIED_SIGNAL (99%)',
         style: 'bg-blue-950/40 text-blue-400 border-blue-800/80 shadow-[0_0_8px_rgba(59,130,246,0.15)]',
-        desc: 'Final delivery checklist scanned locally. Signal verified at Last-Mile destination gate.',
+        desc: 'Final delivery checklist verified locally. Signal confirmed at Last-Mile destination gate.',
       };
     }
 
@@ -319,172 +578,353 @@ function MultiSignalTracker({ activeBookingId }: MultiSignalTrackerProps) {
       style: 'bg-emerald-950/40 text-emerald-400 border-emerald-800/80 shadow-[0_0_8px_rgba(16,185,129,0.15)]',
       desc: 'All signal layers online. Multi-source location coordinates fully synchronized.',
     };
-  }, [isDelayed, transitProgress, trackingData]);
+  }, [currentShipment]);
 
-  // Handle successful Seal verification callback
-  const handleSealVerifyComplete = (bookingId: string) => {
-    setScanResultMsg(`Successfully scanned and verified seal code ${bookingId}`);
-    setIsScanningOCR(false);
-    
-    // Auto-trigger a fetch refresh to show DELIVERED status immediately
-    getTrackingStatus(bookingId).then(setTrackingData);
-  };
+  // Scoped Telemetry Signals for selected shipment or combined overview
+  const signals = useMemo<TelemetrySignal[]>(() => {
+    const s = currentShipment;
+    if (s.isCancelled) {
+      return [
+        {
+          layer: 'FOIS Pravah API',
+          source: 'Indian Railways Central Gateway',
+          value: 'Slot allocation revoked • Train schedule released',
+          status: 'offline',
+          latencyMs: 12,
+        },
+        {
+          layer: 'Temporal Saga Gateway',
+          source: 'Lonics Reversal Orchestrator',
+          value: `Rollback completed • Refund ${formatINR(s.cancellationRefundAmount || 11250)} dispatched`,
+          status: 'active',
+          latencyMs: 8,
+        },
+        {
+          layer: 'Return Exchange Node',
+          source: 'Container Positioning Engine',
+          value: 'Released capacity transferred to secondary spot backhaul queue',
+          status: 'active',
+          latencyMs: 15,
+        },
+        {
+          layer: 'Ground Ops Terminal',
+          source: 'Gate manifest controller',
+          value: 'Manifest record updated: CANCELLED (Carrier release verified)',
+          status: 'active',
+          latencyMs: 10,
+        },
+      ];
+    }
+
+    return [
+      {
+        layer: 'FOIS Pravah API',
+        source: 'Indian Railways Central Gateway',
+        value: `GPS Resolved: Lat ${s.currentCoordinates.lat}, Lng ${s.currentCoordinates.lng} • Velocity: ${s.speedKmh} km/h`,
+        status: s.status === 'REROUTED_GRAP_ACTIVE' ? 'fallback' : 'active',
+        latencyMs: 35,
+      },
+      {
+        layer: 'AQI Metric Engine',
+        source: 'Open-Meteo Air Quality Live Feed',
+        value: `AQI: ${s.aqiMetrics.aqi} (${s.aqiMetrics.grapStage}) • Source: ${s.aqiMetrics.apiSource}`,
+        status: s.status === 'REROUTED_GRAP_ACTIVE' ? 'fallback' : 'active',
+        latencyMs: 82,
+      },
+      {
+        layer: 'Active Route Sequence',
+        source: 'OSRM Dynamic Coordinates',
+        value: s.route.join(' ➔ '),
+        status: 'active',
+        latencyMs: 15,
+      },
+      {
+        layer: 'Ground Ops Telemetry',
+        source: 'Gate manifest controller',
+        value: `Status: ${s.status} • Window Cache: ${s.assignedWindowId}`,
+        status: s.status === 'DELIVERED' ? 'active' : 'fallback',
+        latencyMs: 12,
+      },
+    ];
+  }, [currentShipment]);
 
   return (
-    <div className="bg-card/45 border border-slate-200 dark:border-zinc-800 backdrop-blur-md rounded-xl p-5 shadow-2xl space-y-5 flex flex-col justify-between h-full">
-      <div className="space-y-4">
-        {/* Header */}
-        <div className="flex justify-between items-start gap-2 border-b border-slate-200 dark:border-zinc-800 pb-3">
-          <div>
-            <h2 className="font-bold text-lg text-foreground">Multi-Signal Tracking Terminal</h2>
-            <p className="text-xs text-muted-foreground">Live multi-source cargo tracking telemetry</p>
-          </div>
-        </div>
-
-        {/* Seal verification camera view inside tracker container when active */}
-        {isScanningOCR && (
-          <div className="border border-[#FF6B00]/45 rounded-lg overflow-hidden animate-fade-in">
-            <SealVerifier
-              activeBookingId={activeBookingId || 'BK-MOCK-999'}
-              onVerifyComplete={handleSealVerifyComplete}
-              onClose={() => setIsScanningOCR(false)}
-            />
-          </div>
-        )}
-
-        {/* Action Controls */}
-        <div className="grid grid-cols-3 gap-2">
-          {/* Feeder Delay */}
-          <button
-            type="button"
-            onClick={handleToggleDelay}
-            className={`px-1 py-1.5 rounded-lg text-[9px] font-semibold flex items-center justify-center gap-1 transition duration-200 border cursor-pointer ${
-              isDelayed
-                ? 'bg-rose-500/10 border-rose-500/30 text-rose-500 hover:bg-rose-500/20'
-                : 'bg-background border-slate-200 dark:border-zinc-800 text-muted-foreground hover:bg-muted hover:text-foreground'
-            }`}
-          >
-            {isDelayed ? <RefreshCw className="h-3 w-3 text-rose-500 animate-spin" /> : <AlertTriangle className="h-3 w-3" />}
-            {isDelayed ? 'FOIS Offline' : 'Delay Feeder'}
-          </button>
-
-          {/* OCR Scanner Activation */}
-          <button
-            type="button"
-            onClick={() => {
-              setIsScanningOCR(true);
-              setScanResultMsg(null);
-            }}
-            className="px-1 py-1.5 bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary rounded-lg text-[9px] font-semibold flex items-center justify-center gap-1 transition duration-200 cursor-pointer"
-          >
-            <Camera className="h-3 w-3" />
-            Verify Seal
-          </button>
-
-          {/* Simulate Cancellation */}
-          <button
-            type="button"
-            disabled={isCancelling}
-            onClick={handleSimulateCancellation}
-            className={`px-1 py-1.5 rounded-lg text-[9px] font-semibold flex items-center justify-center gap-1 transition duration-200 border cursor-pointer ${
-              isCancelling
-                ? 'bg-background border-slate-200 dark:border-zinc-800 text-muted-foreground cursor-not-allowed'
-                : 'bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500/20 text-rose-500'
-            }`}
-          >
-            {isCancelling ? <Loader2 className="h-3 w-3 animate-spin" /> : <Ban className="h-3 w-3" />}
-            {cancelStatus || 'Cancel Cargo'}
-          </button>
-        </div>
-
-        {/* Scan result toast notification */}
-        {scanResultMsg && (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 p-2.5 rounded-lg text-emerald-600 dark:text-emerald-400 text-[10px] font-mono flex items-center gap-1.5 animate-pulse">
-            <CheckCircle className="h-3.5 w-3.5" />
-            <span>{scanResultMsg}</span>
-          </div>
-        )}
-
-        {/* Transit visual Pipeline */}
-        <div className="bg-background/80 border border-slate-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
-          <div className="flex justify-between items-center text-xs">
-            <span className="font-semibold text-foreground">Mumbai Port (First-Mile)</span>
-            <span className={`font-bold font-mono ${
-              isDelayed 
-                ? 'text-rose-500' 
-                : trackingData?.status === 'REROUTED_GRAP_ACTIVE' 
-                  ? 'text-[#FF6B00] animate-pulse' 
-                  : transitProgress === 0 
-                    ? 'text-rose-500' 
-                    : 'text-primary animate-pulse'
-            }`}>
-              {isDelayed 
-                ? 'STALLED AT DADRI ICD' 
-                : trackingData?.status === 'REROUTED_GRAP_ACTIVE'
-                  ? 'GRAP REROUTE ACTIVE'
-                  : transitProgress === 0 
-                    ? 'CANCELED' 
-                    : transitProgress >= 100 
-                      ? 'ARRIVED AT DESTINATION' 
-                      : 'IN LINE-HAUL DFC TRANSIT'}
+    <div className="bg-card/45 border border-slate-200 dark:border-zinc-800 backdrop-blur-md rounded-xl p-3.5 sm:p-4 shadow-xl space-y-3 text-foreground">
+      {/* Header with Title & Shipment Selector */}
+      <div className="space-y-2 border-b border-slate-200 dark:border-zinc-800 pb-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="p-1 rounded-md bg-primary/10 text-primary border border-primary/20 flex items-center justify-center">
+              <Radio className="h-3.5 w-3.5 animate-pulse" />
             </span>
-            <span className="font-semibold text-foreground">Delhi ICD (Last-Mile)</span>
+            <h2 className="font-bold text-sm sm:text-base text-foreground tracking-tight">
+              Multi-Signal Tracking Terminal
+            </h2>
+          </div>
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-primary/10 text-primary border border-primary/20 shrink-0">
+            {shipments.length} Active
+          </span>
+        </div>
+
+        {/* Compact Shipment Selector Ribbon */}
+        <div className="flex items-center gap-1 p-1 bg-muted/40 rounded-lg border border-slate-200 dark:border-zinc-800 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-zinc-700">
+          <button
+            type="button"
+            id="tracking-tab-overview"
+            onClick={() => setSelectedBookingId('OVERVIEW')}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-medium transition cursor-pointer flex items-center gap-1 shrink-0 ${
+              selectedBookingId === 'OVERVIEW'
+                ? 'bg-card text-primary shadow-sm font-bold border border-border'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+            }`}
+          >
+            <LayoutGrid className="h-3 w-3" />
+            <span>Overview</span>
+          </button>
+
+          {shipments.map((s) => {
+            const isSelected = selectedBookingId === s.bookingId;
+            const shortOrigin = s.origin.split(' ')[0].substring(0, 3).toUpperCase();
+            const shortDest = s.destination.split(' ')[0].substring(0, 3).toUpperCase();
+            return (
+              <button
+                key={s.bookingId}
+                type="button"
+                id={`tracking-tab-${s.bookingId}`}
+                onClick={() => setSelectedBookingId(s.bookingId)}
+                className={`px-2 py-1 rounded-md text-[11px] font-mono font-medium transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  isSelected
+                    ? 'bg-card text-primary shadow-sm font-bold border border-border'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                    s.isCancelled
+                      ? 'bg-rose-500'
+                      : s.status === 'REROUTED_GRAP_ACTIVE'
+                      ? 'bg-[#FF6B00] animate-pulse'
+                      : 'bg-emerald-500 animate-pulse'
+                  }`}
+                />
+                <span className="font-semibold">{s.bookingId}</span>
+                <span className="text-[9px] text-muted-foreground opacity-75 hidden sm:inline">
+                  ({shortOrigin}➔{shortDest})
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── VIEW MODE 1: FLEET OVERVIEW ── */}
+      {selectedBookingId === 'OVERVIEW' && (
+        <div className="space-y-2 max-h-[360px] overflow-y-auto pr-0.5 animate-fade-in scrollbar-thin">
+          <div className="flex justify-between items-center text-[11px] font-mono text-muted-foreground pb-0.5">
+            <span className="font-bold uppercase flex items-center gap-1 text-foreground">
+              <Layers className="h-3 w-3 text-primary" /> Active Freight Matrix
+            </span>
+            <span>{shipments.length} Corridors</span>
           </div>
 
-          <div className="relative h-2 w-full bg-background rounded-full border border-slate-200 dark:border-zinc-800">
-            <div
-              className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r ${
-                isDelayed 
-                  ? 'from-rose-600 to-rose-500' 
-                  : trackingData?.status === 'REROUTED_GRAP_ACTIVE'
+          <div className="space-y-2">
+            {shipments.map((shipment) => (
+              <div
+                key={shipment.bookingId}
+                className="p-2.5 bg-background border border-slate-200 dark:border-zinc-800 rounded-lg space-y-2 hover:border-primary/40 transition shadow-sm"
+              >
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-mono">
+                    <span className="font-bold text-foreground">{shipment.bookingId}</span>
+                    <span className="text-muted-foreground">({shipment.origin.split(' ')[0]} ➔ {shipment.destination.split(' ')[0]})</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase border ${
+                        shipment.isCancelled
+                          ? 'bg-rose-500/10 text-rose-500 border-rose-500/30'
+                          : shipment.status === 'REROUTED_GRAP_ACTIVE'
+                          ? 'bg-[#FF6B00]/10 text-[#FF6B00] border-[#FF6B00]/30'
+                          : 'bg-primary/10 text-primary border-primary/20'
+                      }`}
+                    >
+                      {shipment.stage}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedBookingId(shipment.bookingId)}
+                      className="px-1.5 py-0.5 text-[9px] font-mono font-semibold bg-muted hover:bg-muted/80 text-foreground rounded border border-border transition cursor-pointer"
+                    >
+                      Inspect →
+                    </button>
+                  </div>
+                </div>
+
+                <div className="relative h-1.5 w-full bg-muted/60 rounded-full overflow-hidden border border-border">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r ${
+                      shipment.isCancelled
+                        ? 'from-rose-600 to-rose-400'
+                        : shipment.isDelayed
+                        ? 'from-rose-600 to-rose-500'
+                        : shipment.status === 'REROUTED_GRAP_ACTIVE'
+                        ? 'from-primary via-[#FF6B00] to-amber-500'
+                        : 'from-primary to-blue-500'
+                    }`}
+                    style={{ width: `${shipment.transitProgress}%` }}
+                  />
+                </div>
+
+                <div className="flex justify-between items-center text-[9px] font-mono text-muted-foreground">
+                  <span>{shipment.transitProgress}% • {shipment.speedKmh} km/h</span>
+                  <span className={shipment.isDelayed ? 'text-rose-500 font-bold' : ''}>SLA: {shipment.uptimeSla}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── VIEW MODE 2: SINGLE SHIPMENT VIEW ── */}
+      {selectedBookingId !== 'OVERVIEW' && (
+        <div className="space-y-2.5 animate-fade-in">
+          {/* Action Buttons */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              id="tracking-delay-feeder-btn"
+              disabled={currentShipment.isCancelled}
+              onClick={() => handleToggleDelay(currentShipment.bookingId)}
+              className={`px-2 py-1.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1.5 transition border cursor-pointer ${
+                currentShipment.isCancelled
+                  ? 'bg-muted border-border text-muted-foreground cursor-not-allowed opacity-50'
+                  : currentShipment.isDelayed
+                  ? 'bg-rose-500/10 border-rose-500/30 text-rose-500 hover:bg-rose-500/20'
+                  : 'bg-background border-border text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+            >
+              {currentShipment.isDelayed ? (
+                <RefreshCw className="h-3 w-3 text-rose-500 animate-spin" />
+              ) : (
+                <AlertTriangle className="h-3 w-3" />
+              )}
+              <span>{currentShipment.isDelayed ? 'FOIS Offline' : 'Delay Feeder'}</span>
+            </button>
+
+            <button
+              type="button"
+              id="tracking-cancel-cargo-btn"
+              disabled={currentShipment.isCancelled || isCancelling}
+              onClick={() => setCancellingShipment(currentShipment)}
+              className={`px-2 py-1.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1.5 transition border cursor-pointer ${
+                currentShipment.isCancelled
+                  ? 'bg-muted border-border text-muted-foreground cursor-not-allowed opacity-60'
+                  : isCancelling
+                  ? 'bg-background border-border text-muted-foreground cursor-not-allowed'
+                  : 'bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500/20 text-rose-500'
+              }`}
+            >
+              {isCancelling ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : currentShipment.isCancelled ? (
+                <Ban className="h-3 w-3 text-rose-500" />
+              ) : (
+                <TrendingDown className="h-3 w-3" />
+              )}
+              <span>{currentShipment.isCancelled ? 'Cancelled' : isCancelling ? 'Processing...' : 'Cancel Cargo'}</span>
+            </button>
+          </div>
+
+          {/* Post-Cancellation Status Banner */}
+          {currentShipment.isCancelled && (
+            <div className="p-2 bg-rose-500/10 border border-rose-500/30 rounded-lg text-[10px] text-rose-600 dark:text-rose-400 flex items-center justify-between gap-1 animate-fade-in">
+              <span className="font-bold flex items-center gap-1">
+                <Ban className="h-3 w-3" /> {currentShipment.bookingId} Cancelled
+              </span>
+              <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                Refund: {formatINR(currentShipment.cancellationRefundAmount || 11250)}
+              </span>
+            </div>
+          )}
+
+          {/* Compact Transit Visual Pipeline */}
+          <div className="bg-background/80 border border-slate-200 dark:border-zinc-800 rounded-lg p-2.5 space-y-2 shadow-inner">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1 min-w-0 text-[11px] font-semibold text-foreground">
+                <span className="truncate max-w-[120px]">{currentShipment.origin.split(' ')[0]}</span>
+                <ArrowRight className="h-3 w-3 text-primary shrink-0" />
+                <span className="truncate max-w-[120px]">{currentShipment.destination.split(' ')[0]}</span>
+              </div>
+
+              <span
+                className={`shrink-0 font-bold font-mono text-center px-1.5 py-0.2 rounded text-[9px] tracking-wider uppercase border ${
+                  currentShipment.isCancelled
+                    ? 'text-rose-500 bg-rose-500/10 border-rose-500/30'
+                    : currentShipment.isDelayed
+                    ? 'text-rose-500 bg-rose-500/10 border-rose-500/30'
+                    : currentShipment.status === 'REROUTED_GRAP_ACTIVE'
+                    ? 'text-[#FF6B00] animate-pulse bg-[#FF6B00]/10 border-[#FF6B00]/30'
+                    : 'text-primary bg-primary/10 border-primary/20'
+                }`}
+              >
+                {currentShipment.isCancelled
+                  ? 'CANCELED'
+                  : currentShipment.isDelayed
+                  ? 'STALLED'
+                  : currentShipment.status === 'REROUTED_GRAP_ACTIVE'
+                  ? 'GRAP REROUTE'
+                  : currentShipment.stage.toUpperCase()}
+              </span>
+            </div>
+
+            <div className="relative h-2 w-full bg-muted/60 rounded-full border border-border">
+              <div
+                className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r ${
+                  currentShipment.isCancelled
+                    ? 'from-rose-600 to-rose-400'
+                    : currentShipment.isDelayed
+                    ? 'from-rose-600 to-rose-500'
+                    : currentShipment.status === 'REROUTED_GRAP_ACTIVE'
                     ? 'from-primary via-[#FF6B00] to-amber-500'
                     : 'from-primary to-blue-500'
-              }`}
-              style={{ width: `${transitProgress}%` }}
-            ></div>
-            <div
-              className={`absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full border flex items-center justify-center transition-all duration-500 shadow-xl ${
-                isDelayed
-                  ? 'bg-rose-950 border-rose-500 text-rose-400 animate-ping'
-                  : trackingData?.status === 'REROUTED_GRAP_ACTIVE'
-                    ? 'bg-[#FF6B00]/20 border-[#FF6B00] text-[#FF6B00]'
-                    : 'bg-primary/20 border-primary text-primary'
-              }`}
-              style={{ left: `calc(${transitProgress}% - 10px)` }}
-            >
-              <span className={`h-2.5 w-2.5 rounded-full ${
-                isDelayed 
-                  ? 'bg-rose-500' 
-                  : trackingData?.status === 'REROUTED_GRAP_ACTIVE'
-                    ? 'bg-[#FF6B00]'
-                    : 'bg-primary'
-              }`}></span>
+                }`}
+                style={{ width: `${currentShipment.transitProgress}%` }}
+              />
+              <div
+                className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full border flex items-center justify-center transition-all duration-500 shadow-sm bg-primary/20 border-primary"
+                style={{ left: `calc(${Math.max(2, Math.min(98, currentShipment.transitProgress))}% - 7px)` }}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center text-[9px] text-muted-foreground font-mono">
+              <span>Progress: <strong className="text-foreground">{currentShipment.transitProgress.toFixed(1)}%</strong></span>
+              <span>SLA: <strong className={currentShipment.isDelayed ? 'text-rose-500' : 'text-foreground'}>{currentShipment.uptimeSla}</strong></span>
             </div>
           </div>
 
-          <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono">
-            <span>Progress: {transitProgress.toFixed(1)}%</span>
-            <span>Uptime SLA: {isDelayed ? 'Violated (+2.4h)' : trackingData?.status === 'REROUTED_GRAP_ACTIVE' ? 'Re-Route Split (+45m)' : 'Normal'}</span>
-          </div>
-        </div>
-
-        {/* Confidence Banner */}
-        <div className={`p-3 border rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all duration-350 ${confidenceBadge.style}`}>
-          <div className="space-y-1">
+          {/* Compact Signal Health Confidence Pill */}
+          <div className={`p-2 border rounded-lg flex items-center justify-between text-xs transition-all duration-300 ${confidenceBadge.style}`}>
             <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-current animate-pulse"></span>
-              <span className="text-xs font-bold font-mono tracking-wider">{confidenceBadge.label}</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse shrink-0" />
+              <span className="font-bold font-mono text-[10px] tracking-wider">{confidenceBadge.label}</span>
             </div>
-            <p className="text-[10px] leading-relaxed opacity-90">{confidenceBadge.desc}</p>
+            <span className="text-[9px] opacity-80 truncate max-w-[170px]">{confidenceBadge.desc}</span>
           </div>
         </div>
+      )}
 
-        {/* Tabs for Signals vs Kafka logs */}
-        <div className="flex border-b border-slate-200 dark:border-zinc-800">
+      {/* ── SHARED TELEMETRY CHANNELS & KAFKA RETRY FEED ── */}
+      <div className="space-y-2 pt-0.5">
+        <div className="flex border-b border-slate-200 dark:border-zinc-800 text-[11px]">
           <button
             type="button"
-            className={`px-4 py-2 text-xs font-semibold border-b-2 cursor-pointer transition ${
-              activeTab === 'signals' ? 'border-primary text-primary font-bold' : 'border-transparent text-muted-foreground hover:text-foreground'
+            className={`px-3 py-1.5 font-semibold border-b-2 cursor-pointer transition ${
+              activeTab === 'signals'
+                ? 'border-primary text-primary font-bold'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
             onClick={() => setActiveTab('signals')}
           >
@@ -492,51 +932,74 @@ function MultiSignalTracker({ activeBookingId }: MultiSignalTrackerProps) {
           </button>
           <button
             type="button"
-            className={`px-4 py-2 text-xs font-semibold border-b-2 cursor-pointer transition flex items-center gap-1.5 ${
-              activeTab === 'kafka' ? 'border-primary text-primary font-bold' : 'border-transparent text-muted-foreground hover:text-foreground'
+            className={`px-3 py-1.5 font-semibold border-b-2 cursor-pointer transition flex items-center gap-1 ${
+              activeTab === 'kafka'
+                ? 'border-primary text-primary font-bold'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
             onClick={() => setActiveTab('kafka')}
           >
-            <Terminal className="h-3.5 w-3.5" /> Kafka Retry Queue
-            {isDelayed && <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse"></span>}
+            <Terminal className="h-3 w-3" /> Kafka Queue
+            {currentShipment.isDelayed && <span className="h-1 w-1 rounded-full bg-rose-500 animate-pulse" />}
           </button>
         </div>
 
-        {/* Tab Content 1: Telemetry Signals */}
+        {/* Compact Signals Grid */}
         {activeTab === 'signals' && (
-          <div className="space-y-2.5">
+          <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-0.5 scrollbar-thin">
             {signals.map((sig, idx) => (
-              <div key={idx} className="flex justify-between items-center bg-background border border-slate-200 dark:border-zinc-800 p-2.5 rounded-lg text-xs animate-fade-in">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-1.5">
-                    {sig.status === 'active' && <Wifi className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />}
-                    {sig.status === 'fallback' && <Wifi className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400 animate-pulse" />}
-                    {sig.status === 'offline' && <WifiOff className="h-3.5 w-3.5 text-rose-500 dark:text-rose-400" />}
-                    <span className="font-bold text-foreground">{sig.layer}</span>
+              <div
+                key={idx}
+                className="flex justify-between items-center bg-background border border-slate-200 dark:border-zinc-800 p-1.5 px-2 rounded-md text-[10px] animate-fade-in"
+              >
+                <div className="min-w-0 pr-2">
+                  <div className="flex items-center gap-1 font-semibold text-foreground truncate">
+                    {sig.status === 'active' && <Wifi className="h-3 w-3 text-emerald-500 shrink-0" />}
+                    {sig.status === 'fallback' && <Wifi className="h-3 w-3 text-amber-500 animate-pulse shrink-0" />}
+                    {sig.status === 'offline' && <WifiOff className="h-3 w-3 text-rose-500 shrink-0" />}
+                    <span className="truncate">{sig.layer}:</span>
+                    <span className="font-mono text-muted-foreground truncate">{sig.value}</span>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">{sig.source}</p>
-                  <p className="font-mono text-[10px] text-foreground mt-1 pl-5">{sig.value}</p>
                 </div>
-                <div className="text-right font-mono text-[10px] text-muted-foreground">
-                  Latency: <span className={sig.latencyMs > 100 ? 'text-amber-500 font-bold' : 'text-muted-foreground'}>{sig.latencyMs}ms</span>
-                </div>
+                <span className="font-mono text-[9px] text-muted-foreground shrink-0">{sig.latencyMs}ms</span>
               </div>
             ))}
           </div>
         )}
 
-        {/* Tab Content 2: Kafka Retry Queue */}
+        {/* Tab 2: Kafka Feed */}
         {activeTab === 'kafka' && (
-          <KafkaQueueFeed kafkaLogs={kafkaLogs} />
+          <KafkaQueueFeed
+            kafkaLogs={kafkaLogs}
+            selectedId={selectedBookingId === 'OVERVIEW' ? null : selectedBookingId}
+          />
         )}
       </div>
 
-      <div className="border-t border-slate-200 dark:border-zinc-800 pt-3 flex justify-between items-center text-[10px] font-mono text-muted-foreground">
+      {/* Terminal Footer */}
+      <div className="border-t border-slate-200 dark:border-zinc-800 pt-2 flex justify-between items-center text-[9px] font-mono text-muted-foreground">
         <span className="flex items-center gap-1">
-          <CheckCircle className="h-3.5 w-3.5 text-emerald-500" /> API Gateway: ULIP Connected
+          <CheckCircle className="h-3 w-3 text-emerald-500" /> ULIP Gateway Online
         </span>
-        <span>Active ID: {activeBookingId || 'None'}</span>
+        <span>
+          Selected: {selectedBookingId === 'OVERVIEW' ? 'Fleet Overview' : selectedBookingId}
+        </span>
       </div>
+
+      {/* Per-Shipment Cancellation & Refund Review Modal */}
+      {cancellingShipment && (
+        <CancellationReviewModal
+          isOpen={true}
+          onClose={() => setCancellingShipment(null)}
+          bookingId={cancellingShipment.bookingId}
+          origin={cancellingShipment.origin}
+          destination={cancellingShipment.destination}
+          totalBookingAmount={cancellingShipment.totalBookingAmount}
+          currentStatus={cancellingShipment.status}
+          transitProgress={cancellingShipment.transitProgress}
+          onConfirmCancellation={handleConfirmCancellation}
+        />
+      )}
     </div>
   );
 }

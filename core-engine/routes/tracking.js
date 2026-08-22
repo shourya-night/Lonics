@@ -6,6 +6,90 @@ import { shipmentsFallbackCache } from './bookings.js';
 const router = express.Router();
 
 /**
+ * GET /api/tracking
+ * Returns tracking payloads for all active shipments
+ */
+router.get('/', async (req, res) => {
+  try {
+    const results = [];
+    const seen = new Set();
+
+    try {
+      const { data, error } = await supabase.from('shipments').select('*');
+      if (!error && data) {
+        for (const s of data) {
+          if (s.booking_id && !seen.has(s.booking_id)) {
+            seen.add(s.booking_id);
+            results.push({
+              booking_id: s.booking_id,
+              origin: s.origin || 'Mumbai Port DFC Gate-1',
+              destination: s.destination || 'Delhi ICD Terminal-3',
+              status: s.status || 'IN_TRANSIT',
+              assigned_window_id: s.assigned_window_id || 'WIN-PRIMARY-DFC',
+              route: [s.origin || 'Mumbai Port', 'Dadri ICD Yard', s.destination || 'Delhi ICD'],
+              telemetry: {
+                current_coordinates: { lat: 22.84, lng: 74.52 },
+                speed_kmh: 55,
+                heading: 'North-East',
+                last_ping: new Date().toISOString(),
+                signal_source: 'FOIS_Pravah_Live'
+              },
+              aqi_metrics: {
+                aqi: 142,
+                grap_stage: 'STAGE_I_MODERATE',
+                active_restrictions: 'None',
+                api_source: 'Open-Meteo'
+              }
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Tracking] Supabase fetch error:', e.message);
+    }
+
+    // Default sample fallback entries if empty
+    const defaults = [
+      { id: 'BK-8930', origin: 'Mumbai Port DFC Gate-1', destination: 'Delhi ICD Terminal-3', status: 'IN_TRANSIT', speed: 55, lat: 22.84, lng: 74.52 },
+      { id: 'BK-4102', origin: 'Ludhiana ICD Yard', destination: 'Mumbai Port DFC Gate-1', status: 'REROUTED_GRAP_ACTIVE', speed: 38, lat: 30.90, lng: 75.85 },
+      { id: 'BK-7729', origin: 'Dadri Multi-Modal Hub', destination: 'Chennai Port Container Terminal', status: 'IN_TRANSIT', speed: 62, lat: 20.45, lng: 78.90 },
+      { id: 'BK-9514', origin: 'Ahmedabad Logistics Hub', destination: 'Kolkata Port Docks', status: 'IN_TRANSIT', speed: 45, lat: 22.57, lng: 88.36 },
+    ];
+
+    for (const d of defaults) {
+      if (!seen.has(d.id)) {
+        seen.add(d.id);
+        results.push({
+          booking_id: d.id,
+          origin: d.origin,
+          destination: d.destination,
+          status: d.status,
+          assigned_window_id: 'WIN-PRIMARY-DFC',
+          route: [d.origin, 'Dadri ICD Yard', d.destination],
+          telemetry: {
+            current_coordinates: { lat: d.lat, lng: d.lng },
+            speed_kmh: d.speed,
+            heading: 'North-East',
+            last_ping: new Date().toISOString(),
+            signal_source: d.status === 'REROUTED_GRAP_ACTIVE' ? 'NTES_Fallback_Station' : 'FOIS_Pravah_Live'
+          },
+          aqi_metrics: {
+            aqi: d.status === 'REROUTED_GRAP_ACTIVE' ? 385 : 128,
+            grap_stage: d.status === 'REROUTED_GRAP_ACTIVE' ? 'STAGE_III_SEVERE' : 'STAGE_I_MODERATE',
+            active_restrictions: d.status === 'REROUTED_GRAP_ACTIVE' ? 'BS-III Diesel ban in NCR' : 'None',
+            api_source: 'Open-Meteo'
+          }
+        });
+      }
+    }
+
+    return res.json(results);
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to retrieve shipments' });
+  }
+});
+
+/**
  * GET /api/tracking/:bookingId
  * METRIC FUSION: Unites telemetry streams with live city coordinates and AQI GRAP check
  */

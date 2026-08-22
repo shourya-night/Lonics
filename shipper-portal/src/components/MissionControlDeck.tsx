@@ -16,7 +16,6 @@ import {
   Compass,
   ChevronUp,
   ChevronDown,
-  import {
   Moon,
   Sun,
   LogOut,
@@ -27,6 +26,7 @@ import {
 import QuotingConsole from './QuotingConsole';
 import MultiSignalTracker from './MultiSignalTracker';
 import ConsolidationMonitor from './ConsolidationMonitor';
+import MonthlyBillingPanel from './MonthlyBillingPanel';
 import RailContainerBookingModal from './rail/RailContainerBookingModal';
 import AIPredictionDashboard from './AIPredictionDashboard';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -548,14 +548,9 @@ export default function MissionControlDeck({
             </span>
           </div>
 
-<<<<<<< HEAD
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Authenticated SME Shipper Profile Pill */}
-=======
           {/* Right: Controls */}
           <div className="flex flex-wrap items-center gap-2">
             {/* Org / Account pill */}
->>>>>>> b79f9bdc (waitlist and ui changes)
             {userProfile && (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-zinc-800 bg-card text-xs font-mono">
                 <Building2 className="h-3.5 w-3.5 text-sky-500 flex-shrink-0" />
@@ -570,54 +565,33 @@ export default function MissionControlDeck({
               </div>
             )}
 
-<<<<<<< HEAD
-            {/* Back to Public Landing Link */}
-            {onNavigateLanding && (
-              <button
-                type="button"
-                onClick={onNavigateLanding}
-                className="px-3 py-1.5 rounded-lg text-xs font-mono border border-slate-200 dark:border-zinc-800 bg-card text-foreground hover:bg-muted transition duration-200 flex items-center gap-1.5 cursor-pointer"
-                title="View Public Website"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                <span>Public Site</span>
-              </button>
-            )}
-
+            {/* Rail Availability */}
             <button
               type="button"
-<<<<<<< HEAD
               onClick={() => setIsRailBookingModalOpen(true)}
               className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 transition duration-200 shadow-sm flex items-center gap-1.5 cursor-pointer"
               title="View Rail Container Availability & Book Slots"
             >
               <Train className="h-3.5 w-3.5" />
-              <span>Rail Availability</span>
-=======
+              <span className="hidden sm:inline">Rail Availability</span>
+            </button>
+
+            {/* AI Predictions */}
+            <button
+              type="button"
               onClick={() => setShowPredictionStudio(!showPredictionStudio)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition duration-200 shadow flex items-center gap-1.5 cursor-pointer ${showPredictionStudio
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition duration-200 shadow flex items-center gap-1.5 cursor-pointer ${
+                showPredictionStudio
                   ? 'bg-primary border-primary text-primary-foreground font-bold ring-2 ring-primary/30'
                   : 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20'
-                }`}
+              }`}
               title="Toggle AI Prediction Engine Studio"
             >
               <Brain className="h-3.5 w-3.5" />
-              <span>AI Predictions</span>
->>>>>>> 364a1201 (AI prediction engine)
+              <span className="hidden sm:inline">AI Predictions</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-              className="px-3 py-1.5 rounded-lg text-xs font-mono border border-slate-200 dark:border-zinc-800 bg-card text-foreground hover:bg-muted transition duration-200 shadow flex items-center gap-1.5 cursor-pointer"
-            >
-              {theme === 'light' ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
-              {theme === 'light' ? 'Dark' : 'Light'}
-            </button>
-
-=======
             {/* Preview OS */}
->>>>>>> b79f9bdc (waitlist and ui changes)
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('lonics:open-preview'))}
@@ -713,9 +687,10 @@ export default function MissionControlDeck({
             <ConsolidationMonitor />
           </div>
 
-          {/* RIGHT: Live Telemetry signals & tracking feed */}
-          <div className="xl:col-span-4">
+          {/* RIGHT: Live Telemetry Signals & Monthly Freight Billing */}
+          <div className="xl:col-span-4 space-y-6">
             <MultiSignalTracker activeBookingId={activeBookingId} />
+            <MonthlyBillingPanel activeBookingId={activeBookingId} />
           </div>
         </div>
 
@@ -730,11 +705,15 @@ export default function MissionControlDeck({
               transition={{ duration: 0.2, ease: 'easeInOut' }}
             >
               {activeTab === 'Book' && <QuotingConsole onBookingCreated={handleBookingCreated} />}
-              {activeTab === 'Track' && <MultiSignalTracker activeBookingId={activeBookingId} />}
+              {activeTab === 'Track' && (
+                <div className="space-y-6">
+                  <MultiSignalTracker activeBookingId={activeBookingId} />
+                  <MonthlyBillingPanel activeBookingId={activeBookingId} />
+                </div>
+              )}
               {activeTab === 'Monitor' && <ConsolidationMonitor />}
               {activeTab === 'Predict' && <AIPredictionDashboard />}
             </motion.div>
-
           </AnimatePresence>
         </div>
 
@@ -784,60 +763,9 @@ export default function MissionControlDeck({
                         </div>
                       </div>
 
-<<<<<<< HEAD
-                        {/* Grid Matrix Rows */}
-                        {AGENT_LIST.map((src) => (
-                          <div key={src.id} className="grid grid-cols-12 gap-1 py-1 border-t border-slate-200/50 dark:border-zinc-800/50 items-center">
-                            <div className="text-xs font-mono font-medium truncate text-muted-foreground pl-2 text-left" title={src.name}>
-                              {src.name}
-                            </div>
-                            {AGENT_LIST.map((tgt) => {
-                              const link = links[src.id]?.[tgt.id];
-                              return (
-                                <div
-                                  key={tgt.id}
-                                  className={`relative group h-6 rounded flex items-center justify-center cursor-pointer transition duration-150 ${link?.status === 'inactive' ? 'bg-muted/10 hover:bg-muted/40' : 'bg-muted/50'
-                                    }`}
-                                >
-                                  {link && (
-                                    <span
-                                      className={`h-2.5 w-2.5 rounded-full transition-all duration-300 ${getLinkStatusColor(
-                                        link.status
-                                      )} ${link.status === 'transmitting' ? 'animate-pulse' : ''}`}
-                                    ></span>
-                                  )}
-
-                                  {/* Hover Tooltip */}
-                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 rounded bg-card border border-slate-200 dark:border-zinc-800 text-[10px] text-left opacity-0 pointer-events-none group-hover:opacity-100 transition duration-200 z-50 shadow-xl">
-                                    <p className="font-bold text-foreground">
-                                      {src.name} → {tgt.name}
-                                    </p>
-                                    {link?.status !== 'inactive' ? (
-                                      <div className="mt-1 space-y-0.5 text-muted-foreground">
-                                        <p>Status: <span className="capitalize text-foreground">{link?.status}</span></p>
-                                        <p>Bandwidth: <span className="text-foreground">{link?.bandwidthKbps} Kbps</span></p>
-                                        <p>Errors: <span className="text-foreground">{(link?.errorRate ?? 0 * 100).toFixed(1)}%</span></p>
-                                        <p>Transmitted: <span className="text-foreground">{link?.messagesTransmitted}</span></p>
-                                      </div>
-                                    ) : (
-                                      <p className="text-muted-foreground mt-0.5">Channel Offline</p>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-=======
-                      {/*
-                        Grid strategy:
-                        - First column = row label, fixed at 140px.
-                        - Remaining 11 columns = 1fr each, distributing all leftover panel width equally.
-                        - Each cell has aspect-square so height = computed width (a true square).
-                        - No overflow-x-auto / no scrollbar on normal desktop widths.
-                        - On very narrow viewports (<640px) we allow horizontal scroll.
-                      */}
+                      {/* Column Headers row */}
                       <div className="overflow-x-auto sm:overflow-x-visible">
                         <div className="min-w-[480px]">
-                          {/* Column Headers row — same grid template as matrix rows */}
                           <div className="grid gap-1.5 mb-2 text-[10px] font-mono text-muted-foreground font-bold"
                                style={{ gridTemplateColumns: '140px repeat(11, 1fr)' }}>
                             <div className="text-left pl-1 uppercase tracking-wider text-[9px]">LAYER</div>
@@ -846,7 +774,6 @@ export default function MissionControlDeck({
                                 {a.name.slice(0, 3)}
                               </div>
                             ))}
->>>>>>> b79f9bdc (waitlist and ui changes)
                           </div>
 
                           {/* 11 Matrix Rows */}

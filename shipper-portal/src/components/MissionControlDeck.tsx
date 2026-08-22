@@ -566,6 +566,16 @@ export default function MissionControlDeck({
               {theme === 'light' ? 'Dark' : 'Light'}
             </button>
 
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('lonics:open-preview'))}
+              className="px-3 py-1.5 rounded-lg text-xs font-mono border border-slate-200 dark:border-zinc-800 bg-card text-foreground hover:bg-muted transition duration-200 flex items-center gap-1.5 cursor-pointer"
+              title="Lock and view Operational Preview"
+            >
+              <Activity className="h-3.5 w-3.5 text-sky-500" />
+              <span className="hidden md:inline">Preview OS</span>
+            </button>
+
             <div className="hidden sm:flex items-center gap-2 text-xs font-mono bg-card/60 border border-slate-200 dark:border-zinc-800 px-3 py-1.5 rounded-full text-muted-foreground">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
               SYSTEM: OPERATIONAL

@@ -1,37 +1,84 @@
-import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import OnboardingPage from './pages/OnboardingPage';
 import MissionControlDeck from './components/MissionControlDeck';
+import OperationalPreviewScreen from './components/preview/OperationalPreviewScreen';
 import { fetchCurrentProfile, signOutUser, supabase } from './lib/supabase';
 import type { UserProfile } from './lib/supabase';
+import { Loader2 } from 'lucide-react';
 
 function AppShell() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // 1. Canonical Authentication State
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
+  // 2. Operational Lock Screen Unlock State (session-scoped)
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('lonics_preview_unlocked') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleUnlock = useCallback(() => {
+    setIsUnlocked(true);
+    try {
+      sessionStorage.setItem('lonics_preview_unlocked', 'true');
+    } catch {
+      // ignore storage error
+    }
+  }, []);
+
+  const handleOpenPreview = useCallback(() => {
+    setIsUnlocked(false);
+    try {
+      sessionStorage.removeItem('lonics_preview_unlocked');
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Listen for secondary Preview OS triggers inside the authenticated app
+  useEffect(() => {
+    const handleReopen = () => handleOpenPreview();
+    window.addEventListener('lonics:open-preview', handleReopen);
+    return () => window.removeEventListener('lonics:open-preview', handleReopen);
+  }, [handleOpenPreview]);
+
+  // Check canonical Supabase auth session
   useEffect(() => {
     async function loadSession() {
       try {
-        const { user, profile: fetchedProfile } = await fetchCurrentProfile();
+        const { user: authUser, profile: fetchedProfile } = await fetchCurrentProfile();
+        setUser(authUser);
         if (fetchedProfile) {
           setProfile(fetchedProfile);
-        } else if (user) {
+        } else if (authUser) {
           setProfile({
-            user_id: user.id,
-            full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Shipper',
-            email: user.email || '',
-            business_name: user.user_metadata?.business_name || '',
-            business_categories: user.user_metadata?.business_categories || [],
-            city: user.user_metadata?.city || '',
-            state: user.user_metadata?.state || '',
-            country: user.user_metadata?.country || 'India',
-            onboarding_completed: !!user.user_metadata?.onboarding_completed,
+            user_id: authUser.id,
+            full_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Shipper',
+            email: authUser.email || '',
+            business_name: authUser.user_metadata?.business_name || '',
+            business_categories: authUser.user_metadata?.business_categories || [],
+            city: authUser.user_metadata?.city || '',
+            state: authUser.user_metadata?.state || '',
+            country: authUser.user_metadata?.country || 'India',
+            onboarding_completed: !!authUser.user_metadata?.onboarding_completed,
           });
+        } else {
+          setProfile(null);
         }
       } catch (err) {
-        console.warn('[App Auth Loader]', err);
+        console.warn('[Lonics Auth Resolution]', err);
+      } finally {
+        setAuthLoading(false);
       }
     }
 
@@ -39,8 +86,16 @@ function AppShell() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT') {
+        setUser(null);
         setProfile(null);
+        setIsUnlocked(false);
+        try {
+          sessionStorage.removeItem('lonics_preview_unlocked');
+        } catch {
+          // ignore
+        }
       } else if (session?.user) {
+        setUser(session.user);
         const { profile: p } = await fetchCurrentProfile();
         if (p) setProfile(p);
       }
@@ -54,8 +109,15 @@ function AppShell() {
   const handleSignOut = async () => {
     try {
       await signOutUser();
+      setUser(null);
       setProfile(null);
-      navigate('/', { replace: true });
+      setIsUnlocked(false);
+      try {
+        sessionStorage.removeItem('lonics_preview_unlocked');
+      } catch {
+        // ignore
+      }
+      navigate('/login', { replace: true });
     } catch (err) {
       console.error('Failed to sign out:', err);
     }
@@ -65,24 +127,59 @@ function AppShell() {
     navigate('/');
   };
 
+  const isAuthenticated = Boolean(user);
+
+  // 3. Initial Auth Loading State (No preview or authenticated screen flash)
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center font-sans">
+        <Loader2 className="h-8 w-8 text-primary animate-spin mb-3" />
+        <p className="text-xs font-mono text-muted-foreground">Verifying Lonics authorization...</p>
+      </div>
+    );
+  }
+
+  // 4. Authenticated Application Deck wrapper with Operational Preview lock screen
+  const isAppDeckRoute = location.pathname.startsWith('/app') || location.pathname.startsWith('/dashboard');
+
   return (
-    <Routes>
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/onboarding" element={<OnboardingPage />} />
-      <Route
-        path="/app"
-        element={
-          <MissionControlDeck
-            userProfile={profile}
-            onSignOut={handleSignOut}
-            onNavigateLanding={handleNavigateLanding}
+    <div className="relative min-h-screen bg-background text-foreground">
+      {/* Underlying Application Routes */}
+      <div className="min-h-screen">
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route
+            path="/login"
+            element={isAuthenticated ? <Navigate to="/app" replace /> : <LoginPage />}
           />
-        }
-      />
-      <Route path="/dashboard" element={<Navigate to="/app" replace />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+          <Route
+            path="/onboarding"
+            element={isAuthenticated ? <OnboardingPage /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/app"
+            element={
+              isAuthenticated ? (
+                <MissionControlDeck
+                  userProfile={profile}
+                  onSignOut={handleSignOut}
+                  onNavigateLanding={handleNavigateLanding}
+                />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+          <Route path="/dashboard" element={<Navigate to="/app" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+
+      {/* Operational Preview Screen - Strictly gated to authenticated users on the operational deck */}
+      {isAuthenticated && isAppDeckRoute && !isUnlocked && (
+        <OperationalPreviewScreen onUnlock={handleUnlock} />
+      )}
+    </div>
   );
 }
 

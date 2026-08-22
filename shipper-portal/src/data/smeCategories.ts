@@ -1,0 +1,235 @@
+export interface SMECategory {
+  id: string;
+  name: string;
+  sector: string;
+  description?: string;
+  popular?: boolean;
+}
+
+export const SME_CATEGORIES: SMECategory[] = [
+  // Textiles & Apparel
+  { id: 'textiles', name: 'Textiles', sector: 'Textiles & Apparel', popular: true },
+  { id: 'garments', name: 'Garments', sector: 'Textiles & Apparel', popular: true },
+  { id: 'apparel_accessories', name: 'Apparel Accessories', sector: 'Textiles & Apparel' },
+  { id: 'textile_accessories', name: 'Textile Accessories', sector: 'Textiles & Apparel' },
+  { id: 'textile_machinery', name: 'Textile Machinery', sector: 'Textiles & Apparel' },
+  { id: 'garment_machinery', name: 'Garment Machinery', sector: 'Textiles & Apparel' },
+  { id: 'footwear', name: 'Footwear', sector: 'Textiles & Apparel', popular: true },
+  { id: 'footwear_manufacturing', name: 'Footwear Manufacturing', sector: 'Textiles & Apparel' },
+  { id: 'leather_goods', name: 'Leather Goods', sector: 'Textiles & Apparel' },
+  { id: 'leather_products', name: 'Leather Products', sector: 'Textiles & Apparel' },
+  { id: 'bags_luggage', name: 'Bags & Luggage', sector: 'Textiles & Apparel' },
+  { id: 'fashion_accessories', name: 'Fashion Accessories', sector: 'Textiles & Apparel' },
+  { id: 'home_furnishings', name: 'Home Furnishings', sector: 'Textiles & Apparel' },
+  { id: 'curtains', name: 'Curtains', sector: 'Textiles & Apparel' },
+  { id: 'carpets', name: 'Carpets', sector: 'Textiles & Apparel' },
+  { id: 'mattresses', name: 'Mattresses', sector: 'Textiles & Apparel' },
+
+  // Food & Agriculture
+  { id: 'food_beverage', name: 'Food & Beverage', sector: 'Agriculture & Food', popular: true },
+  { id: 'packaged_foods', name: 'Packaged Foods', sector: 'Agriculture & Food', popular: true },
+  { id: 'spices', name: 'Spices', sector: 'Agriculture & Food', popular: true },
+  { id: 'grains', name: 'Grains', sector: 'Agriculture & Food' },
+  { id: 'pulses', name: 'Pulses', sector: 'Agriculture & Food' },
+  { id: 'edible_oils', name: 'Edible Oils', sector: 'Agriculture & Food' },
+  { id: 'tea', name: 'Tea', sector: 'Agriculture & Food' },
+  { id: 'coffee', name: 'Coffee', sector: 'Agriculture & Food' },
+  { id: 'confectionery', name: 'Confectionery', sector: 'Agriculture & Food' },
+  { id: 'snacks', name: 'Snacks', sector: 'Agriculture & Food' },
+  { id: 'bakery', name: 'Bakery', sector: 'Agriculture & Food' },
+  { id: 'dairy', name: 'Dairy', sector: 'Agriculture & Food' },
+  { id: 'frozen_foods', name: 'Frozen Foods', sector: 'Agriculture & Food' },
+  { id: 'fruits', name: 'Fruits', sector: 'Agriculture & Food' },
+  { id: 'vegetables', name: 'Vegetables', sector: 'Agriculture & Food' },
+  { id: 'flowers', name: 'Flowers', sector: 'Agriculture & Food' },
+  { id: 'meat_products', name: 'Meat Products', sector: 'Agriculture & Food' },
+  { id: 'seafood', name: 'Seafood', sector: 'Agriculture & Food' },
+  { id: 'beverages', name: 'Beverages', sector: 'Agriculture & Food' },
+  { id: 'bottled_water', name: 'Bottled Water', sector: 'Agriculture & Food' },
+  { id: 'agricultural_equipment', name: 'Agricultural Equipment', sector: 'Agriculture & Food' },
+  { id: 'seeds', name: 'Seeds', sector: 'Agriculture & Food' },
+  { id: 'fertilizers', name: 'Fertilizers', sector: 'Agriculture & Food' },
+  { id: 'organic_products', name: 'Organic Products', sector: 'Agriculture & Food' },
+  { id: 'animal_feed', name: 'Animal Feed', sector: 'Agriculture & Food' },
+  { id: 'pet_food', name: 'Pet Food', sector: 'Agriculture & Food' },
+  { id: 'pet_supplies', name: 'Pet Supplies', sector: 'Agriculture & Food' },
+  { id: 'gardening_supplies', name: 'Gardening Supplies', sector: 'Agriculture & Food' },
+  { id: 'nursery_supplies', name: 'Nursery Supplies', sector: 'Agriculture & Food' },
+
+  // Heavy Industry, Metals & Machinery
+  { id: 'industrial_machinery', name: 'Industrial Machinery', sector: 'Machinery & Engineering', popular: true },
+  { id: 'industrial_supplies', name: 'Industrial Supplies', sector: 'Machinery & Engineering', popular: true },
+  { id: 'industrial_components', name: 'Industrial Components', sector: 'Machinery & Engineering' },
+  { id: 'tools_equipment', name: 'Tools & Equipment', sector: 'Machinery & Engineering', popular: true },
+  { id: 'tools', name: 'Tools', sector: 'Machinery & Engineering' },
+  { id: 'hardware', name: 'Hardware', sector: 'Machinery & Engineering', popular: true },
+  { id: 'fasteners', name: 'Fasteners', sector: 'Machinery & Engineering' },
+  { id: 'bearings', name: 'Bearings', sector: 'Machinery & Engineering' },
+  { id: 'motors', name: 'Motors', sector: 'Machinery & Engineering' },
+  { id: 'pumps', name: 'Pumps', sector: 'Machinery & Engineering' },
+  { id: 'compressors', name: 'Compressors', sector: 'Machinery & Engineering' },
+  { id: 'generators', name: 'Generators', sector: 'Machinery & Engineering' },
+  { id: 'steel_products', name: 'Steel Products', sector: 'Machinery & Engineering', popular: true },
+  { id: 'aluminium_products', name: 'Aluminium Products', sector: 'Machinery & Engineering' },
+  { id: 'copper_products', name: 'Copper Products', sector: 'Machinery & Engineering' },
+  { id: 'metal_products', name: 'Metal Products', sector: 'Machinery & Engineering' },
+  { id: 'industrial_safety', name: 'Industrial Safety', sector: 'Machinery & Engineering' },
+  { id: 'safety_equipment', name: 'Safety Equipment', sector: 'Machinery & Engineering' },
+  { id: 'fire_safety_equipment', name: 'Fire Safety Equipment', sector: 'Machinery & Engineering' },
+
+  // Automotive & EV
+  { id: 'automotive_parts', name: 'Automotive Parts', sector: 'Automotive & Mobility', popular: true },
+  { id: 'auto_accessories', name: 'Auto Accessories', sector: 'Automotive & Mobility' },
+  { id: 'automotive_manufacturing', name: 'Automotive Manufacturing', sector: 'Automotive & Mobility' },
+  { id: 'auto_repair_supplies', name: 'Auto Repair Supplies', sector: 'Automotive & Mobility' },
+  { id: 'ev_components', name: 'EV Components', sector: 'Automotive & Mobility', popular: true },
+  { id: 'electric_vehicles', name: 'Electric Vehicles', sector: 'Automotive & Mobility' },
+  { id: 'tyres', name: 'Tyres', sector: 'Automotive & Mobility' },
+  { id: 'lubricants', name: 'Lubricants', sector: 'Automotive & Mobility' },
+  { id: 'batteries', name: 'Batteries', sector: 'Automotive & Mobility' },
+  { id: 'batteries_energy_storage', name: 'Batteries & Energy Storage', sector: 'Automotive & Mobility' },
+
+  // Electronics & Electrical
+  { id: 'electronics', name: 'Electronics', sector: 'Electronics & Electrical', popular: true },
+  { id: 'consumer_electronics', name: 'Consumer Electronics', sector: 'Electronics & Electrical' },
+  { id: 'electrical_equipment', name: 'Electrical Equipment', sector: 'Electronics & Electrical' },
+  { id: 'electrical_components', name: 'Electrical Components', sector: 'Electronics & Electrical' },
+  { id: 'switchgear', name: 'Switchgear', sector: 'Electronics & Electrical' },
+  { id: 'transformers', name: 'Transformers', sector: 'Electronics & Electrical' },
+  { id: 'cables', name: 'Cables', sector: 'Electronics & Electrical' },
+  { id: 'wires', name: 'Wires', sector: 'Electronics & Electrical' },
+  { id: 'lighting', name: 'Lighting', sector: 'Electronics & Electrical' },
+  { id: 'led_products', name: 'LED Products', sector: 'Electronics & Electrical' },
+  { id: 'solar_equipment', name: 'Solar Equipment', sector: 'Electronics & Electrical', popular: true },
+  { id: 'solar_panels', name: 'Solar Panels', sector: 'Electronics & Electrical' },
+  { id: 'inverters', name: 'Inverters', sector: 'Electronics & Electrical' },
+  { id: 'renewable_energy_equipment', name: 'Renewable Energy Equipment', sector: 'Electronics & Electrical' },
+  { id: 'hvac_equipment', name: 'HVAC Equipment', sector: 'Electronics & Electrical' },
+  { id: 'refrigeration_equipment', name: 'Refrigeration Equipment', sector: 'Electronics & Electrical' },
+  { id: 'cold_chain_products', name: 'Cold Chain Products', sector: 'Electronics & Electrical' },
+  { id: 'home_appliances', name: 'Home Appliances', sector: 'Electronics & Electrical' },
+  { id: 'mobile_phones', name: 'Mobile Phones', sector: 'Electronics & Electrical' },
+  { id: 'mobile_accessories', name: 'Mobile Accessories', sector: 'Electronics & Electrical' },
+  { id: 'mobile_phone_accessories', name: 'Mobile Phone Accessories', sector: 'Electronics & Electrical' },
+  { id: 'computers_it_hardware', name: 'Computers & IT Hardware', sector: 'Electronics & Electrical' },
+  { id: 'computer_accessories', name: 'Computer Accessories', sector: 'Electronics & Electrical' },
+  { id: 'networking_equipment', name: 'Networking Equipment', sector: 'Electronics & Electrical' },
+  { id: 'telecommunications_equipment', name: 'Telecommunications Equipment', sector: 'Electronics & Electrical' },
+  { id: 'security_equipment', name: 'Security Equipment', sector: 'Electronics & Electrical' },
+  { id: 'photography_equipment', name: 'Photography Equipment', sector: 'Electronics & Electrical' },
+  { id: 'audio_equipment', name: 'Audio Equipment', sector: 'Electronics & Electrical' },
+  { id: 'video_equipment', name: 'Video Equipment', sector: 'Electronics & Electrical' },
+  { id: 'gaming_equipment', name: 'Gaming Equipment', sector: 'Electronics & Electrical' },
+
+  // Construction, Building & Ceramics
+  { id: 'building_materials', name: 'Building Materials', sector: 'Construction & Building', popular: true },
+  { id: 'construction_supplies', name: 'Construction Supplies', sector: 'Construction & Building' },
+  { id: 'construction_hardware', name: 'Construction Hardware', sector: 'Construction & Building' },
+  { id: 'cement_products', name: 'Cement Products', sector: 'Construction & Building' },
+  { id: 'ceramics', name: 'Ceramics', sector: 'Construction & Building', popular: true },
+  { id: 'tiles', name: 'Tiles', sector: 'Construction & Building', popular: true },
+  { id: 'sanitaryware', name: 'Sanitaryware', sector: 'Construction & Building' },
+  { id: 'pipes', name: 'Pipes', sector: 'Construction & Building' },
+  { id: 'wood_products', name: 'Wood Products', sector: 'Construction & Building' },
+  { id: 'timber', name: 'Timber', sector: 'Construction & Building' },
+  { id: 'plywood', name: 'Plywood', sector: 'Construction & Building' },
+  { id: 'glass', name: 'Glass', sector: 'Construction & Building' },
+  { id: 'glass_products', name: 'Glass Products', sector: 'Construction & Building' },
+  { id: 'paint', name: 'Paint', sector: 'Construction & Building' },
+  { id: 'adhesives', name: 'Adhesives', sector: 'Construction & Building' },
+
+  // Furniture & Home Decor
+  { id: 'furniture', name: 'Furniture', sector: 'Furniture & Decor', popular: true },
+  { id: 'furniture_manufacturing', name: 'Furniture Manufacturing', sector: 'Furniture & Decor' },
+  { id: 'home_decor', name: 'Home Decor', sector: 'Furniture & Decor' },
+  { id: 'office_furniture', name: 'Office Furniture', sector: 'Furniture & Decor' },
+  { id: 'decorative_products', name: 'Decorative Products', sector: 'Furniture & Decor' },
+  { id: 'kitchenware', name: 'Kitchenware', sector: 'Furniture & Decor' },
+  { id: 'tableware', name: 'Tableware', sector: 'Furniture & Decor' },
+  { id: 'household_goods', name: 'Household Goods', sector: 'Furniture & Decor' },
+  { id: 'consumer_goods', name: 'Consumer Goods', sector: 'Furniture & Decor' },
+  { id: 'handicrafts', name: 'Handicrafts', sector: 'Furniture & Decor', popular: true },
+  { id: 'handmade_products', name: 'Handmade Products', sector: 'Furniture & Decor' },
+
+  // Healthcare, Pharma & Personal Care
+  { id: 'pharmaceuticals', name: 'Pharmaceuticals', sector: 'Healthcare & Pharma', popular: true },
+  { id: 'medical_equipment', name: 'Medical Equipment', sector: 'Healthcare & Pharma', popular: true },
+  { id: 'medical_devices', name: 'Medical Devices', sector: 'Healthcare & Pharma' },
+  { id: 'medical_supplies', name: 'Medical Supplies', sector: 'Healthcare & Pharma' },
+  { id: 'healthcare_supplies', name: 'Healthcare Supplies', sector: 'Healthcare & Pharma' },
+  { id: 'laboratory_equipment', name: 'Laboratory Equipment', sector: 'Healthcare & Pharma' },
+  { id: 'laboratory_supplies', name: 'Laboratory Supplies', sector: 'Healthcare & Pharma' },
+  { id: 'scientific_instruments', name: 'Scientific Instruments', sector: 'Healthcare & Pharma' },
+  { id: 'dental_supplies', name: 'Dental Supplies', sector: 'Healthcare & Pharma' },
+  { id: 'ayurvedic_products', name: 'Ayurvedic Products', sector: 'Healthcare & Pharma', popular: true },
+  { id: 'herbal_products', name: 'Herbal Products', sector: 'Healthcare & Pharma' },
+  { id: 'cosmetics', name: 'Cosmetics', sector: 'Healthcare & Pharma' },
+  { id: 'personal_care', name: 'Personal Care', sector: 'Healthcare & Pharma' },
+  { id: 'beauty_products', name: 'Beauty Products', sector: 'Healthcare & Pharma' },
+
+  // Packaging, Paper & Printing
+  { id: 'packaging', name: 'Packaging', sector: 'Packaging & Paper', popular: true },
+  { id: 'packaging_materials', name: 'Packaging Materials', sector: 'Packaging & Paper' },
+  { id: 'corrugated_boxes', name: 'Corrugated Boxes', sector: 'Packaging & Paper', popular: true },
+  { id: 'plastic_packaging', name: 'Plastic Packaging', sector: 'Packaging & Paper' },
+  { id: 'paper_packaging', name: 'Paper Packaging', sector: 'Packaging & Paper' },
+  { id: 'paper_products', name: 'Paper Products', sector: 'Packaging & Paper' },
+  { id: 'labels', name: 'Labels', sector: 'Packaging & Paper' },
+  { id: 'printing', name: 'Printing', sector: 'Packaging & Paper' },
+  { id: 'printing_materials', name: 'Printing Materials', sector: 'Packaging & Paper' },
+  { id: 'publishing', name: 'Publishing', sector: 'Packaging & Paper' },
+  { id: 'books', name: 'Books', sector: 'Packaging & Paper' },
+  { id: 'stationery', name: 'Stationery', sector: 'Packaging & Paper' },
+  { id: 'stationery_manufacturing', name: 'Stationery Manufacturing', sector: 'Packaging & Paper' },
+  { id: 'office_supplies', name: 'Office Supplies', sector: 'Packaging & Paper' },
+  { id: 'school_supplies', name: 'School Supplies', sector: 'Packaging & Paper' },
+  { id: 'educational_equipment', name: 'Educational Equipment', sector: 'Packaging & Paper' },
+
+  // Chemicals, Plastics & Rubber
+  { id: 'chemicals', name: 'Chemicals', sector: 'Chemicals & Materials', popular: true },
+  { id: 'industrial_chemicals', name: 'Industrial Chemicals', sector: 'Chemicals & Materials' },
+  { id: 'cleaning_products', name: 'Cleaning Products', sector: 'Chemicals & Materials' },
+  { id: 'plastics', name: 'Plastics', sector: 'Chemicals & Materials', popular: true },
+  { id: 'rubber_products', name: 'Rubber Products', sector: 'Chemicals & Materials' },
+  { id: 'recycling', name: 'Recycling', sector: 'Chemicals & Materials' },
+  { id: 'e_waste', name: 'E-waste', sector: 'Chemicals & Materials' },
+  { id: 'scrap_materials', name: 'Scrap Materials', sector: 'Chemicals & Materials' },
+  { id: 'waste_management', name: 'Waste Management', sector: 'Chemicals & Materials' },
+  { id: 'renewable_materials', name: 'Renewable Materials', sector: 'Chemicals & Materials' },
+
+  // Hospitality & Commercial Supplies
+  { id: 'kitchen_equipment', name: 'Kitchen Equipment', sector: 'Commercial & Hospitality' },
+  { id: 'restaurant_supplies', name: 'Restaurant Supplies', sector: 'Commercial & Hospitality' },
+  { id: 'hotel_supplies', name: 'Hotel Supplies', sector: 'Commercial & Hospitality' },
+  { id: 'wedding_supplies', name: 'Wedding Supplies', sector: 'Commercial & Hospitality' },
+  { id: 'event_supplies', name: 'Event Supplies', sector: 'Commercial & Hospitality' },
+  { id: 'gifts', name: 'Gifts', sector: 'Commercial & Hospitality' },
+  { id: 'art_supplies', name: 'Art Supplies', sector: 'Commercial & Hospitality' },
+  { id: 'craft_supplies', name: 'Craft Supplies', sector: 'Commercial & Hospitality' },
+  { id: 'musical_instruments', name: 'Musical Instruments', sector: 'Commercial & Hospitality' },
+  { id: 'jewelry', name: 'Jewelry', sector: 'Commercial & Hospitality' },
+  { id: 'toys', name: 'Toys', sector: 'Commercial & Hospitality' },
+  { id: 'sports_equipment', name: 'Sports Equipment', sector: 'Commercial & Hospitality' },
+
+  // General Trade & Logistics
+  { id: 'manufacturing', name: 'Manufacturing', sector: 'General Trade', popular: true },
+  { id: 'wholesale', name: 'Wholesale', sector: 'General Trade', popular: true },
+  { id: 'retail', name: 'Retail', sector: 'General Trade' },
+  { id: 'e_commerce', name: 'E-commerce', sector: 'General Trade', popular: true },
+  { id: 'export_goods', name: 'Export Goods', sector: 'General Trade', popular: true },
+  { id: 'import_goods', name: 'Import Goods', sector: 'General Trade' },
+  { id: 'general_merchandise', name: 'General Merchandise', sector: 'General Trade' },
+];
+
+/**
+ * Filter SME categories by query across name and sector.
+ */
+export function filterSMECategories(query: string): SMECategory[] {
+  const clean = query.trim().toLowerCase();
+  if (!clean) return SME_CATEGORIES.slice(0, 15); // Return a few popular suggestions initially
+
+  return SME_CATEGORIES.filter((c) =>
+    c.name.toLowerCase().includes(clean) ||
+    c.sector.toLowerCase().includes(clean)
+  );
+}

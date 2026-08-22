@@ -35,51 +35,75 @@
 
 @layer base {
   :root {
-    --background: #F8F9FA;
-    --foreground: #0B192C;
-    --border: #0B192C;
-    --primary: #00E5FF;
-    --primary-foreground: #0B192C;
-    --secondary: #0B192C;
-    --secondary-foreground: #F8F9FA;
+    --background: #FFFFFF;
+    --foreground: #0A192F;
+    --border: #E2E8F0;
+    --primary: #0284C7;
+    --primary-foreground: #FFFFFF;
+    --secondary: #0A192F;
+    --secondary-foreground: #F8FAFC;
     
-    --card: #ffffff;
-    --card-foreground: #0B192C;
-    --popover: #ffffff;
-    --popover-foreground: #0B192C;
-    --muted: #e8ebf0;
-    --muted-foreground: #4a5568;
-    --accent: #f1f5f9;
-    --accent-foreground: #0B192C;
-    --destructive: #E53E3E;
-    --destructive-foreground: #ffffff;
-    --input: #ffffff;
-    --ring: #00E5FF;
+    --card: #FFFFFF;
+    --card-foreground: #0A192F;
+    --popover: #FFFFFF;
+    --popover-foreground: #0A192F;
+    --muted: #F1F5F9;
+    --muted-foreground: #64748B;
+    --accent: #F0F7FF;
+    --accent-foreground: #0284C7;
+    --destructive: #EF4444;
+    --destructive-foreground: #FFFFFF;
+    --input: #FFFFFF;
+    --ring: #0284C7;
     
     --radius: 0.75rem;
   }
 
   [data-theme="dark"] {
-    --background: #121212;
-    --foreground: #F8F9FA;
-    --border: #FF6B00;
-    --primary: #FF6B00;
-    --primary-foreground: #121212;
-    --secondary: #FF6B00;
-    --secondary-foreground: #121212;
+    --background: #090D16;
+    --foreground: #F8FAFC;
+    --border: #1E293B;
+    --primary: #38BDF8;
+    --primary-foreground: #0A192F;
+    --secondary: #38BDF8;
+    --secondary-foreground: #0A192F;
     
-    --card: #1A1A1A;
-    --card-foreground: #F8F9FA;
-    --popover: #1A1A1A;
-    --popover-foreground: #F8F9FA;
-    --muted: #2d2d2d;
-    --muted-foreground: #a3a3a3;
-    --accent: #262626;
-    --accent-foreground: #F8F9FA;
-    --destructive: #E53E3E;
-    --destructive-foreground: #ffffff;
-    --input: #121212;
-    --ring: #FF6B00;
+    --card: #0F172A;
+    --card-foreground: #F8FAFC;
+    --popover: #0F172A;
+    --popover-foreground: #F8FAFC;
+    --muted: #1E293B;
+    --muted-foreground: #94A3B8;
+    --accent: #1E293B;
+    --accent-foreground: #F8FAFC;
+    --destructive: #EF4444;
+    --destructive-foreground: #FFFFFF;
+    --input: #0F172A;
+    --ring: #38BDF8;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -87,11 +111,14 @@
   * {
     border-color: var(--border);
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     background-color: var(--background);
     color: var(--foreground);
     font-feature-settings: "rlig" 1, "calt" 1;
-    font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }

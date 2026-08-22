@@ -2,3 +2,4 @@ node_modules/
 .env
 dist/
 build/
+shipper-portal/.env.local

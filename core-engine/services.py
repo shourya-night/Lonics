@@ -1,6 +1,7 @@
 import os
 import uuid
 import time
+from datetime import datetime
 from typing import Dict, Tuple
 from schemas import BookingRequest, BookingResponse, ShipmentStatus
 from supabase import create_client, Client
@@ -161,6 +162,23 @@ class FreightEngine:
             except Exception as e:
                 print(f"[DB EXCEPTION] shipments insertion failed: {e}")
 
+        # Generate AI Prediction Insights
+        prediction_insights = None
+        try:
+            from prediction.shipment import predict_shipment
+            commodity_name = request.commodity or "Containers"
+            weight_in_tonnes = max(0.1, round(chargeable_weight / 1000.0, 2))
+            current_month = datetime.utcnow().month
+            prediction_insights = predict_shipment(
+                origin=request.origin,
+                destination=request.destination,
+                commodity=commodity_name,
+                weight_tonnes=weight_in_tonnes,
+                month=current_month
+            )
+        except Exception as pred_err:
+            print(f"[AI Prediction Service] Could not generate prediction insights: {pred_err}")
+
         return BookingResponse(
             booking_id=booking_id,
             chargeable_weight=round(chargeable_weight, 2),
@@ -169,5 +187,7 @@ class FreightEngine:
             contingency_buffer=round(contingency_buffer, 2),
             final_quote=round(total_price, 2),
             status=ShipmentStatus.RESERVATION_INITIATED,
-            assigned_window_id=assigned_window_id
+            assigned_window_id=assigned_window_id,
+            prediction_insights=prediction_insights
         )
+

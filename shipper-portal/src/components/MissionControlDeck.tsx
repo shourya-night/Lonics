@@ -22,11 +22,13 @@ import {
   ArrowLeft,
   Building2,
   Train,
+  Brain,
 } from 'lucide-react';
 import QuotingConsole from './QuotingConsole';
 import MultiSignalTracker from './MultiSignalTracker';
 import ConsolidationMonitor from './ConsolidationMonitor';
 import RailContainerBookingModal from './rail/RailContainerBookingModal';
+import AIPredictionDashboard from './AIPredictionDashboard';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { UserProfile } from '../lib/supabase';
 
@@ -440,7 +442,8 @@ export default function MissionControlDeck({
   const [links] = useState<Record<AgentId, Record<AgentId, AgentLink>>>(generateMockLinks);
   const [selectedAgentId, setSelectedAgentId] = useState<AgentId>('CONSOLIDATION_AGENT');
   const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'Book' | 'Track' | 'Monitor'>('Book');
+  const [activeTab, setActiveTab] = useState<'Book' | 'Track' | 'Monitor' | 'Predict'>('Book');
+  const [showPredictionStudio, setShowPredictionStudio] = useState(false);
 
   const handleBookingCreated = useCallback((res: any) => {
     setActiveBookingId(res.booking_id);
@@ -520,7 +523,7 @@ export default function MissionControlDeck({
   return (
     <div className="min-h-screen bg-background text-foreground font-sans p-4 md:p-6 selection:bg-primary/30 transition-colors duration-300">
       <div className="max-w-[1700px] mx-auto space-y-6">
-        
+
         {/* Navigation / Header */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 dark:border-zinc-800 pb-5">
           <div>
@@ -536,7 +539,7 @@ export default function MissionControlDeck({
               Logistics Multi-Agent Orchestrator • Single-Window Quoting Console • Multi-Signal Tracking Terminal
             </p>
           </div>
-          
+
           <div className="flex flex-wrap items-center gap-3">
             {/* Authenticated SME Shipper Profile Pill */}
             {userProfile && (
@@ -568,12 +571,24 @@ export default function MissionControlDeck({
 
             <button
               type="button"
+<<<<<<< HEAD
               onClick={() => setIsRailBookingModalOpen(true)}
               className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 transition duration-200 shadow-sm flex items-center gap-1.5 cursor-pointer"
               title="View Rail Container Availability & Book Slots"
             >
               <Train className="h-3.5 w-3.5" />
               <span>Rail Availability</span>
+=======
+              onClick={() => setShowPredictionStudio(!showPredictionStudio)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition duration-200 shadow flex items-center gap-1.5 cursor-pointer ${showPredictionStudio
+                  ? 'bg-primary border-primary text-primary-foreground font-bold ring-2 ring-primary/30'
+                  : 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20'
+                }`}
+              title="Toggle AI Prediction Engine Studio"
+            >
+              <Brain className="h-3.5 w-3.5" />
+              <span>AI Predictions</span>
+>>>>>>> 364a1201 (AI prediction engine)
             </button>
 
             <button
@@ -655,6 +670,18 @@ export default function MissionControlDeck({
           </div>
         </div>
 
+        {/* AI Prediction Studio Section (Rendered when toggled) */}
+        {showPredictionStudio && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.25 }}
+          >
+            <AIPredictionDashboard onClose={() => setShowPredictionStudio(false)} />
+          </motion.div>
+        )}
+
         {/* Desktop View Layout (visible on md and larger viewports) */}
         <div className="hidden md:grid grid-cols-1 xl:grid-cols-12 gap-6">
           {/* LEFT: Quoting Console & LCL Consolidation Monitor */}
@@ -682,7 +709,9 @@ export default function MissionControlDeck({
               {activeTab === 'Book' && <QuotingConsole onBookingCreated={handleBookingCreated} />}
               {activeTab === 'Track' && <MultiSignalTracker activeBookingId={activeBookingId} />}
               {activeTab === 'Monitor' && <ConsolidationMonitor />}
+              {activeTab === 'Predict' && <AIPredictionDashboard />}
             </motion.div>
+
           </AnimatePresence>
         </div>
 
@@ -752,9 +781,8 @@ export default function MissionControlDeck({
                               return (
                                 <div
                                   key={tgt.id}
-                                  className={`relative group h-6 rounded flex items-center justify-center cursor-pointer transition duration-150 ${
-                                    link?.status === 'inactive' ? 'bg-muted/10 hover:bg-muted/40' : 'bg-muted/50'
-                                  }`}
+                                  className={`relative group h-6 rounded flex items-center justify-center cursor-pointer transition duration-150 ${link?.status === 'inactive' ? 'bg-muted/10 hover:bg-muted/40' : 'bg-muted/50'
+                                    }`}
                                 >
                                   {link && (
                                     <span
@@ -796,11 +824,10 @@ export default function MissionControlDeck({
                         return (
                           <div
                             key={agentInfo.id}
-                            className={`p-3 rounded-xl border backdrop-blur-md cursor-pointer transition-all duration-200 ${
-                              isSelected
+                            className={`p-3 rounded-xl border backdrop-blur-md cursor-pointer transition-all duration-200 ${isSelected
                                 ? 'bg-primary/15 border-primary shadow-md shadow-primary/5'
                                 : 'bg-card/45 border-slate-200 dark:border-zinc-800 hover:border-primary/45 hover:bg-muted/10'
-                            }`}
+                              }`}
                             onClick={() => setSelectedAgentId(agentInfo.id)}
                           >
                             <div className="flex justify-between items-start gap-2">
@@ -840,11 +867,10 @@ export default function MissionControlDeck({
                           <button
                             key={st}
                             type="button"
-                            className={`px-2 py-1 rounded text-[9px] font-mono border capitalize transition duration-150 cursor-pointer ${
-                              activeAgent.status === st
+                            className={`px-2 py-1 rounded text-[9px] font-mono border capitalize transition duration-150 cursor-pointer ${activeAgent.status === st
                                 ? getStatusColor(st) + ' border font-bold ring-1 ring-primary/20'
                                 : 'bg-background/40 border-slate-200 dark:border-zinc-800 hover:bg-muted hover:text-foreground text-muted-foreground'
-                            }`}
+                              }`}
                             onClick={() => handleStatusChange(selectedAgentId, st)}
                           >
                             {st}
@@ -884,6 +910,21 @@ export default function MissionControlDeck({
                       </div>
                     </div>
 
+                    {/* AI Prediction Studio Quick Launch Button */}
+                    {selectedAgentId === 'TRAJECTORY_PREDICTOR' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPredictionStudio(true);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="w-full py-2 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-700 text-white font-mono font-bold text-xs rounded-lg transition shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Brain className="w-4 h-4" />
+                        Launch AI Prediction Studio
+                      </button>
+                    )}
+
                     {/* Error stack */}
                     {activeAgent.errors.length > 0 && (
                       <div className="space-y-1 bg-destructive/10 border border-destructive/40 p-2.5 rounded-lg text-[10px]">
@@ -907,17 +948,16 @@ export default function MissionControlDeck({
         </div>
 
         {/* Sticky Mobile Bottom Navigation Bar */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 border-t border-slate-200 dark:border-zinc-800 backdrop-blur-md py-3 px-6 flex justify-around items-center md:hidden shadow-[0_-8px_30px_rgba(0,0,0,0.3)]">
-          {(['Book', 'Track', 'Monitor'] as const).map((tab) => {
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 border-t border-slate-200 dark:border-zinc-800 backdrop-blur-md py-3 px-4 flex justify-around items-center md:hidden shadow-[0_-8px_30px_rgba(0,0,0,0.3)]">
+          {(['Book', 'Track', 'Monitor', 'Predict'] as const).map((tab) => {
             const isActive = activeTab === tab;
             return (
               <button
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`relative flex flex-col items-center gap-1 py-1 px-4 text-[10px] font-mono tracking-wider uppercase transition duration-200 cursor-pointer ${
-                  isActive ? 'text-primary font-bold' : 'text-slate-400 hover:text-slate-200'
-                }`}
+                className={`relative flex flex-col items-center gap-1 py-1 px-3 text-[10px] font-mono tracking-wider uppercase transition duration-200 cursor-pointer ${isActive ? 'text-primary font-bold' : 'text-slate-400 hover:text-slate-200'
+                  }`}
               >
                 {isActive && (
                   <motion.span
@@ -929,6 +969,7 @@ export default function MissionControlDeck({
                 {tab === 'Book' && <Calculator className="h-4 w-4" />}
                 {tab === 'Track' && <Compass className="h-4 w-4" />}
                 {tab === 'Monitor' && <Layers className="h-4 w-4" />}
+                {tab === 'Predict' && <Brain className="h-4 w-4" />}
                 <span>{tab}</span>
               </button>
             );

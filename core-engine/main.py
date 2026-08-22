@@ -35,7 +35,13 @@ def load_dotenv():
 
 load_dotenv()
 
-from schemas import BookingRequest, BookingResponse
+from schemas import (
+    BookingRequest,
+    BookingResponse,
+    ShipmentPredictionRequest,
+    ShipmentPredictionResponse,
+    PredictionHealthResponse
+)
 from services import FreightEngine
 
 # Middleware to intercept application/json scan requests and rewrite them to multipart/form-data at the ASGI layer
@@ -541,9 +547,176 @@ async def get_tracking(booking_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Tracking retrieval failed: {str(e)}")
 
-@app.get("/health")
+# ══════════════════════════════════════════════════════════════════════════════
+# AI PREDICTION ENGINE ENDPOINTS
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _check_prediction_database() -> bool:
+    try:
+        from prediction.database import get_database
+        db = get_database()
+        db.get_schema()
+        return True
+    except Exception:
+        return False
+
+def _check_prediction_models() -> bool:
+    try:
+        from prediction.forecasting import load_training_results
+        return load_training_results() is not None
+    except Exception:
+        return False
+
+@app.get("/health", tags=["System"])
 def health_check():
     """
-    Health check endpoint.
+    Health check endpoint reporting Core Engine and Prediction Engine availability.
     """
-    return {"status": "healthy"}
+    from prediction import __version__ as pred_ver
+    return {
+        "status": "healthy",
+        "engine_version": pred_ver,
+        "database_available": _check_prediction_database(),
+        "models_trained": _check_prediction_models(),
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }
+
+@app.get("/api/predictions/health", response_model=PredictionHealthResponse, tags=["Prediction System"])
+@app.get("/api/v1/freight/predictions/health", response_model=PredictionHealthResponse, tags=["Prediction System"])
+def prediction_health_check():
+    """
+    Dedicated health check for AI prediction subsystem.
+    """
+    from prediction import __version__ as pred_ver
+    return PredictionHealthResponse(
+        status="healthy",
+        engine_version=pred_ver,
+        database_available=_check_prediction_database(),
+        models_trained=_check_prediction_models(),
+    )
+
+@app.get("/api/predictions/freight", tags=["AI Forecasting"])
+@app.get("/api/v1/freight/predictions/freight", tags=["AI Forecasting"])
+def get_freight_forecast(periods: int = 5):
+    """
+    Get total railway freight demand forecast with historical values and prediction intervals.
+    """
+    try:
+        from prediction.forecasting import forecast_total_freight
+        return forecast_total_freight(periods=periods)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Freight forecast failed: {str(e)}")
+
+@app.get("/api/predictions/monthly", tags=["AI Forecasting"])
+@app.get("/api/v1/freight/predictions/monthly", tags=["AI Forecasting"])
+def get_monthly_forecast(periods: int = 12):
+    """
+    Get monthly freight demand forecast with seasonal decomposition.
+    """
+    try:
+        from prediction.forecasting import forecast_monthly
+        return forecast_monthly(periods=periods)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Monthly forecast failed: {str(e)}")
+
+@app.get("/api/predictions/commodities", tags=["AI Forecasting"])
+@app.get("/api/v1/freight/predictions/commodities", tags=["AI Forecasting"])
+def get_commodity_forecast(periods: int = 3):
+    """
+    Get commodity-level freight demand forecasts across all discovered categories.
+    """
+    try:
+        from prediction.commodity import forecast_commodities
+        return forecast_commodities(periods=periods)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Commodity forecast failed: {str(e)}")
+
+@app.get("/api/predictions/network", tags=["AI Network Intelligence"])
+@app.get("/api/v1/freight/predictions/network", tags=["AI Network Intelligence"])
+def get_network_pressure():
+    """
+    Get the composite Lonics Network Pressure Score (0-100) combining capacity utilization,
+    freight growth, train density, and DFC load.
+    """
+    try:
+        from prediction.network import calculate_network_pressure
+        return calculate_network_pressure()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Network pressure calculation failed: {str(e)}")
+
+@app.get("/api/predictions/dfc", tags=["AI Network Intelligence"])
+@app.get("/api/v1/freight/predictions/dfc", tags=["AI Network Intelligence"])
+def get_dfc_forecast(periods: int = 3):
+    """
+    Get Dedicated Freight Corridor activity and tonnage forecast.
+    """
+    try:
+        from prediction.network import forecast_dfc
+        return forecast_dfc(periods=periods)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"DFC forecast failed: {str(e)}")
+
+@app.get("/api/predictions/capacity", tags=["AI Network Intelligence"])
+@app.get("/api/v1/freight/predictions/capacity", tags=["AI Network Intelligence"])
+def get_capacity_forecast(periods: int = 3):
+    """
+    Get railway capacity utilization forecast.
+    """
+    try:
+        from prediction.network import forecast_capacity
+        return forecast_capacity(periods=periods)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Capacity forecast failed: {str(e)}")
+
+@app.get("/api/predictions/model-performance", tags=["AI System Performance"])
+@app.get("/api/v1/freight/predictions/model-performance", tags=["AI System Performance"])
+def get_model_performance():
+    """
+    Get backtested performance metrics (MAE, RMSE, MAPE) across candidate forecasting models.
+    """
+    try:
+        from prediction.forecasting import load_training_results, forecast_total_freight
+        results = load_training_results()
+        if results is None:
+            result = forecast_total_freight(periods=1)
+            return {
+                "trained_models_available": False,
+                "live_backtest": {
+                    "model": result["model"],
+                    "metrics": result["model_metrics"],
+                    "all_models": result["all_model_metrics"],
+                },
+                "note": "Run train_models.py for comprehensive model evaluation"
+            }
+        return {
+            "trained_models_available": True,
+            "results": results,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Model performance retrieval failed: {str(e)}")
+
+@app.post("/api/predictions/shipment", tags=["AI Shipment Intelligence"])
+@app.post("/api/v1/freight/predictions/shipment", tags=["AI Shipment Intelligence"])
+def predict_shipment_endpoint(request: ShipmentPredictionRequest):
+    """
+    Get AI macro-level shipment intelligence, modal suitability rating,
+    consolidation potential, demand outlook, and data-driven recommendations.
+    """
+    try:
+        from prediction.shipment import predict_shipment
+        month_val = request.month or datetime.utcnow().month
+        result = predict_shipment(
+            origin=request.origin,
+            destination=request.destination,
+            commodity=request.commodity,
+            weight_tonnes=request.weight_tonnes,
+            month=month_val,
+        )
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Shipment prediction failed: {str(e)}")
+

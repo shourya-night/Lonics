@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node --watch server.js",
-    "start": "node server.js"
+    "dev": "python -m uvicorn main:app --reload --port 8000",
+    "start": "python -m uvicorn main:app --host 0.0.0.0 --port 8000",
+    "dev:node": "node --watch server.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.43.4",

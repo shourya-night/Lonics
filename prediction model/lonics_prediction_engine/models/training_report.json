@@ -1,0 +1,133 @@
+{
+  "total_freight": {
+    "best_model": "linear_trend",
+    "metrics": {
+      "model": "linear_trend",
+      "mae": 10.35,
+      "rmse": 11.86,
+      "mape": 0.76,
+      "n_backtests": 13
+    },
+    "all_metrics": {
+      "naive": {
+        "model": "naive",
+        "mae": 49.52,
+        "rmse": 51.65,
+        "mape": 3.69,
+        "n_backtests": 13
+      },
+      "linear_trend": {
+        "model": "linear_trend",
+        "mae": 10.35,
+        "rmse": 11.86,
+        "mape": 0.76,
+        "n_backtests": 13
+      },
+      "recent_growth": {
+        "model": "recent_growth",
+        "mae": 17.05,
+        "rmse": 18.91,
+        "mape": 1.28,
+        "n_backtests": 13
+      },
+      "holt_winters": {
+        "model": "holt_winters",
+        "mae": 10.4,
+        "rmse": 13.53,
+        "mape": 0.79,
+        "n_backtests": 13
+      },
+      "seasonal_naive": {
+        "model": "seasonal_naive",
+        "mae": 49.52,
+        "rmse": 51.65,
+        "mape": 3.69,
+        "n_backtests": 13
+      }
+    }
+  },
+  "commodities": {
+    "coal_mt": {
+      "best_model": "linear_trend",
+      "metrics": {
+        "model": "linear_trend",
+        "mae": 5.1,
+        "rmse": 5.64,
+        "mape": 0.81,
+        "n_backtests": 13
+      }
+    },
+    "iron_ore_mt": {
+      "best_model": "linear_trend",
+      "metrics": {
+        "model": "linear_trend",
+        "mae": 2.09,
+        "rmse": 2.36,
+        "mape": 1.38,
+        "n_backtests": 13
+      }
+    },
+    "cement_mt": {
+      "best_model": "linear_trend",
+      "metrics": {
+        "model": "linear_trend",
+        "mae": 2.08,
+        "rmse": 2.78,
+        "mape": 1.75,
+        "n_backtests": 13
+      }
+    },
+    "containers_mt": {
+      "best_model": "linear_trend",
+      "metrics": {
+        "model": "linear_trend",
+        "mae": 1.02,
+        "rmse": 1.25,
+        "mape": 1.48,
+        "n_backtests": 13
+      }
+    },
+    "foodgrains_mt": {
+      "best_model": "linear_trend",
+      "metrics": {
+        "model": "linear_trend",
+        "mae": 1.13,
+        "rmse": 1.33,
+        "mape": 2.02,
+        "n_backtests": 13
+      }
+    },
+    "others_mt": {
+      "best_model": "linear_trend",
+      "metrics": {
+        "model": "linear_trend",
+        "mae": 5.29,
+        "rmse": 6.5,
+        "mape": 1.66,
+        "n_backtests": 13
+      }
+    }
+  },
+  "network": {
+    "avg_freight_trains_per_day": {
+      "best_model": "linear_trend",
+      "metrics": {
+        "model": "linear_trend",
+        "mae": 1.89,
+        "rmse": 2.83,
+        "mape": 2.73,
+        "n_backtests": 13
+      }
+    },
+    "avg_capacity_utilization_pct": {
+      "best_model": "naive",
+      "metrics": {
+        "model": "naive",
+        "mae": 2.17,
+        "rmse": 3.2,
+        "mape": 1.64,
+        "n_backtests": 13
+      }
+    }
+  }
+}

@@ -479,6 +479,41 @@ function QuotingConsole({ onBookingCreated }: QuotingConsoleProps) {
                 </div>
               </div>
             </div>
+
+            {/* AI Prediction Model Insights from FastAPI */}
+            {bookingResult.prediction_insights && (
+              <div className="border-t border-emerald-500/20 pt-3 mt-3 bg-background/50 p-3 rounded-lg border border-border/50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-mono font-bold text-primary flex items-center gap-1.5">
+                    🤖 AI Modal Intelligence Insights
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-primary/10 text-primary font-semibold">
+                    {bookingResult.prediction_insights.recommendation}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 my-2 text-center text-xs font-mono">
+                  <div className="bg-card p-1.5 rounded border border-border/60">
+                    <span className="text-[9px] text-muted-foreground block">Rail Suitability</span>
+                    <span className="font-bold text-emerald-500">{bookingResult.prediction_insights.rail_suitability}%</span>
+                  </div>
+                  <div className="bg-card p-1.5 rounded border border-border/60">
+                    <span className="text-[9px] text-muted-foreground block">Network Pressure</span>
+                    <span className="font-bold text-amber-500">{bookingResult.prediction_insights.network_pressure}/100</span>
+                  </div>
+                  <div className="bg-card p-1.5 rounded border border-border/60">
+                    <span className="text-[9px] text-muted-foreground block">Demand Outlook</span>
+                    <span className="font-bold text-primary">{bookingResult.prediction_insights.demand_outlook}</span>
+                  </div>
+                </div>
+                {bookingResult.prediction_insights.reasons?.length > 0 && (
+                  <ul className="text-[10px] text-muted-foreground space-y-1 mt-2 list-disc list-inside">
+                    {bookingResult.prediction_insights.reasons.map((r, i) => (
+                      <li key={i}>{r}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
         )}
 

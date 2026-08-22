@@ -1,5 +1,5 @@
-import { useState, useMemo, memo } from 'react';
-import { Camera, Plus, Trash2, ShieldCheck, HelpCircle, Loader2, IndianRupee, ChevronLeft, ChevronRight, Train } from 'lucide-react';
+import { useState, useMemo, memo, useEffect } from 'react';
+import { Camera, Plus, Trash2, ShieldCheck, HelpCircle, Loader2, IndianRupee, ChevronLeft, ChevronRight, Train, Truck } from 'lucide-react';
 import { bookFreight } from '../utils/api';
 import type { BookingResponse, BookingRequest } from '../utils/api';
 import AICargoScanner from './AICargoScanner';
@@ -28,10 +28,27 @@ function QuotingConsole({ onBookingCreated }: QuotingConsoleProps) {
   const [scanStatus, setScanStatus] = useState('');
   const [showScanTooltip, setShowScanTooltip] = useState(false);
   const [railLockEnabled, setRailLockEnabled] = useState(false);
+  const [transportMode, setTransportMode] = useState<'rail' | 'road'>('rail');
 
   const [isBooking, setIsBooking] = useState(false);
   const [bookingResult, setBookingResult] = useState<BookingResponse | null>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
+
+  // Listen for global transport mode switches
+  useEffect(() => {
+    const handleSetRoad = () => setTransportMode('road');
+    const handleSetRail = () => setTransportMode('rail');
+
+    window.addEventListener('lonics:set-road-transport', handleSetRoad);
+    window.addEventListener('lonics:set-rail-transport', handleSetRail);
+    window.addEventListener('lonics:open-road-booking', handleSetRoad);
+
+    return () => {
+      window.removeEventListener('lonics:set-road-transport', handleSetRoad);
+      window.removeEventListener('lonics:set-rail-transport', handleSetRail);
+      window.removeEventListener('lonics:open-road-booking', handleSetRoad);
+    };
+  }, []);
 
   // Add package row
   const addRow = () => {
@@ -561,35 +578,82 @@ function QuotingConsole({ onBookingCreated }: QuotingConsoleProps) {
 
           {/* Real-time Pricing Comparison */}
           <div className="space-y-3">
-            <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-bold">Base Rates Comparison</p>
+            <div className="flex justify-between items-center">
+              <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-bold">Select Transport Mode</p>
+              <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                {transportMode === 'road' ? 'Road Dispatch Mode' : 'Rail Consolidated Mode'}
+              </span>
+            </div>
             
-            {/* Road Spot rate */}
-            <div className="p-3 bg-background border border-slate-200 dark:border-zinc-800 rounded-lg flex justify-between items-center">
-              <div>
-                <p className="text-xs font-semibold text-foreground">Road PTL (Spot)</p>
-                <p className="text-[10px] text-muted-foreground">Unconsolidated shadow rate</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-bold text-foreground font-mono">
-                  ₹{bookingResult ? (bookingResult.chargeable_weight * 14.5).toFixed(2) : localEstimates.roadPrice.toLocaleString()}
-                </p>
-                <p className="text-[9px] text-muted-foreground font-mono">₹14.50/kg</p>
+            {/* Road Spot rate Card */}
+            <div
+              onClick={() => setTransportMode('road')}
+              className={`p-3 rounded-lg border transition-all duration-200 cursor-pointer ${
+                transportMode === 'road'
+                  ? 'bg-blue-500/10 border-blue-500 shadow-sm dark:bg-blue-950/30'
+                  : 'bg-background border-slate-200 dark:border-zinc-800 hover:border-blue-500/50'
+              }`}
+            >
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <div className={`p-1 rounded ${transportMode === 'road' ? 'bg-blue-500 text-white' : 'bg-muted text-muted-foreground'}`}>
+                    <Truck className="h-3.5 w-3.5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-semibold text-foreground">Road PTL (Spot)</p>
+                      {transportMode === 'road' && (
+                        <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-blue-500 text-white uppercase font-bold">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Unconsolidated shadow rate</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-foreground font-mono">
+                    ₹{bookingResult ? (bookingResult.chargeable_weight * 14.5).toFixed(2) : localEstimates.roadPrice.toLocaleString()}
+                  </p>
+                  <p className="text-[9px] text-muted-foreground font-mono">₹14.50/kg</p>
+                </div>
               </div>
             </div>
 
-            {/* Rail-Consolidated rate */}
-            <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg flex justify-between items-center">
-              <div>
-                <p className="text-xs font-semibold text-primary">Rail-Consolidated</p>
-                <p className="text-[10px] text-primary/80">Wholesale co-loaded price</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-bold text-primary font-mono">
-                  ₹{bookingResult ? bookingResult.final_quote.toLocaleString() : localEstimates.railPrice.toLocaleString()}
-                </p>
-                <p className="text-[9px] text-primary/80 font-mono">
-                  {railLockEnabled ? '₹10.08/kg' : '₹9.00/kg'}
-                </p>
+            {/* Rail-Consolidated rate Card */}
+            <div
+              onClick={() => setTransportMode('rail')}
+              className={`p-3 rounded-lg border transition-all duration-200 cursor-pointer ${
+                transportMode === 'rail'
+                  ? 'bg-primary/10 border-primary shadow-sm'
+                  : 'bg-background border-slate-200 dark:border-zinc-800 hover:border-primary/50'
+              }`}
+            >
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <div className={`p-1 rounded ${transportMode === 'rail' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                    <Train className="h-3.5 w-3.5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-semibold text-primary">Rail-Consolidated</p>
+                      {transportMode === 'rail' && (
+                        <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-primary text-primary-foreground uppercase font-bold">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-primary/80">Wholesale co-loaded price</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-primary font-mono">
+                    ₹{bookingResult ? bookingResult.final_quote.toLocaleString() : localEstimates.railPrice.toLocaleString()}
+                  </p>
+                  <p className="text-[9px] text-primary/80 font-mono">
+                    {railLockEnabled ? '₹10.08/kg' : '₹9.00/kg'}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -643,15 +707,23 @@ function QuotingConsole({ onBookingCreated }: QuotingConsoleProps) {
             className={`w-full h-12 md:h-auto md:py-2.5 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 transition border cursor-pointer ${
               isBooking || isScanning
                 ? 'bg-muted border-slate-200 dark:border-zinc-800 text-muted-foreground cursor-not-allowed'
-                : 'bg-emerald-600 border-emerald-500 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/10'
+                : transportMode === 'road'
+                  ? 'bg-blue-600 border-blue-500 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/10'
+                  : 'bg-emerald-600 border-emerald-500 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/10'
             }`}
           >
             {isBooking ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : transportMode === 'road' ? (
+              <Truck className="h-3.5 w-3.5" />
             ) : (
               <IndianRupee className="h-3.5 w-3.5" />
             )}
-            {isBooking ? 'Processing Booking...' : 'Confirm LCL Booking'}
+            {isBooking
+              ? 'Processing Booking...'
+              : transportMode === 'road'
+                ? 'Confirm Road PTL Dispatch'
+                : 'Confirm Rail LCL Booking'}
           </button>
 
           {railLockEnabled && (

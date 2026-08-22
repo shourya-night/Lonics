@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { RailDeparture } from '../../types/rail-booking';
-import { ArrowLeft, ArrowRight, Train, CheckCircle2, Users, ShieldCheck } from 'lucide-react';
+import { formatINR } from '../../utils/railPricingEngine';
+import { ArrowLeft, ArrowRight, Train, CheckCircle2, Users, ShieldCheck, IndianRupee } from 'lucide-react';
 
 interface BookingConfirmationStepProps {
   departure: RailDeparture;
@@ -19,6 +20,7 @@ export const BookingConfirmationStep: React.FC<BookingConfirmationStepProps> = (
   const [cargoDescription, setCargoDescription] = useState('Consolidated Industrial Cargo & Machinery Spares');
 
   const nextWaitlistPos = departure.waitlistCount + 1;
+  const pricing = departure.pricing;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,6 +88,37 @@ export const BookingConfirmationStep: React.FC<BookingConfirmationStepProps> = (
             </div>
           </div>
         </div>
+
+        {/* Tariff Freight Breakdown */}
+        {pricing && (
+          <div className="bg-card border border-border rounded-lg p-3.5 text-xs font-mono space-y-2">
+            <div className="flex justify-between items-center border-b border-border/60 pb-2">
+              <span className="text-[10px] uppercase font-bold text-primary flex items-center gap-1">
+                <IndianRupee className="h-3 w-3" />
+                {pricing.estimateLabel}
+              </span>
+              <span className="text-base font-bold text-foreground">
+                {formatINR(pricing.totalFreight)}
+                {pricing.isLCLSlot && <span className="text-[10px] font-normal text-muted-foreground"> / slot</span>}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px] text-muted-foreground">
+              <div>
+                <span className="block uppercase text-[9px]">Chargeable Distance</span>
+                <span className="font-bold text-foreground">{pricing.chargeableDistanceKm} km ({pricing.distanceBandLabel})</span>
+              </div>
+              <div>
+                <span className="block uppercase text-[9px]">Weight Tier</span>
+                <span className="font-bold text-foreground">{pricing.weightBandLabel}</span>
+              </div>
+              <div>
+                <span className="block uppercase text-[9px]">Tariff Version</span>
+                <span className="font-bold text-foreground">{pricing.tariffMetadata.tariffVersion}</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Booking Form */}
@@ -143,7 +176,7 @@ export const BookingConfirmationStep: React.FC<BookingConfirmationStepProps> = (
               type="submit"
               className="px-5 py-2 rounded-lg text-xs font-mono font-bold bg-sky-600 hover:bg-sky-700 text-white dark:bg-sky-500 dark:hover:bg-sky-400 dark:text-slate-950 transition cursor-pointer flex items-center gap-1.5"
             >
-              <span>CONFIRM WAITLIST</span>
+              <span>CONFIRM WAITLIST ({formatINR(pricing?.totalFreight || 0)})</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
           ) : (
@@ -151,7 +184,7 @@ export const BookingConfirmationStep: React.FC<BookingConfirmationStepProps> = (
               type="submit"
               className="px-5 py-2 rounded-lg text-xs font-mono font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition cursor-pointer flex items-center gap-1.5"
             >
-              <span>CONFIRM BOOKING</span>
+              <span>CONFIRM BOOKING ({formatINR(pricing?.totalFreight || 0)})</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
           )}

@@ -1,10 +1,10 @@
 import type { RailDeparture, RailReservation } from '../types/rail-booking';
+import { calculateRailFreight } from '../utils/railPricingEngine';
 
 /**
- * Clearly labeled mock freight schedules inspired by realistic Indian freight corridors.
- * Demo simulation data for Lonics Rail Container Booking workflow.
+ * Raw freight schedule definitions on realistic Indian freight corridors.
  */
-export const MOCK_FREIGHT_SCHEDULES: RailDeparture[] = [
+const RAW_FREIGHT_SCHEDULES = [
   {
     id: 'dep-1',
     date: '24 AUG',
@@ -17,12 +17,14 @@ export const MOCK_FREIGHT_SCHEDULES: RailDeparture[] = [
     containerType: "40' LCL CONSOLIDATED",
     totalCapacitySlots: 20,
     remainingSlots: 12,
-    status: 'AVAILABLE',
+    status: 'AVAILABLE' as const,
     waitlistCount: 0,
     statusLabel: 'AVAILABLE 12',
     rakeNumber: 'WDFC-EXP-9842',
     cutoffTime: '24 AUG · 15:30',
     operator: 'CONCOR DFC Linehaul',
+    chargeableDistanceKm: 1384,
+    cargoWeightTonnes: 18.5,
   },
   {
     id: 'dep-2',
@@ -36,12 +38,14 @@ export const MOCK_FREIGHT_SCHEDULES: RailDeparture[] = [
     containerType: "40' LCL CONSOLIDATED",
     totalCapacitySlots: 20,
     remainingSlots: 4,
-    status: 'LOW_AVAILABILITY',
+    status: 'LOW_AVAILABILITY' as const,
     waitlistCount: 0,
     statusLabel: 'AVAILABLE 4',
     rakeNumber: 'WDFC-EXP-9848',
     cutoffTime: '24 AUG · 18:45',
     operator: 'CONCOR DFC Linehaul',
+    chargeableDistanceKm: 1412,
+    cargoWeightTonnes: 19.0,
   },
   {
     id: 'dep-3',
@@ -55,12 +59,14 @@ export const MOCK_FREIGHT_SCHEDULES: RailDeparture[] = [
     containerType: "20' FCL HIGH CUBE",
     totalCapacitySlots: 10,
     remainingSlots: 1,
-    status: 'LAST_SLOT',
+    status: 'LAST_SLOT' as const,
     waitlistCount: 0,
     statusLabel: 'LAST SLOT',
     rakeNumber: 'WDFC-FAST-1044',
     cutoffTime: '25 AUG · 03:00',
     operator: 'DP World Rail Express',
+    chargeableDistanceKm: 1384,
+    cargoWeightTonnes: 14.0,
   },
   {
     id: 'dep-4',
@@ -74,12 +80,14 @@ export const MOCK_FREIGHT_SCHEDULES: RailDeparture[] = [
     containerType: "40' LCL CONSOLIDATED",
     totalCapacitySlots: 20,
     remainingSlots: 0,
-    status: 'WAITLIST',
+    status: 'WAITLIST' as const,
     waitlistCount: 2,
     statusLabel: 'WL02',
     rakeNumber: 'WDFC-EXP-9852',
     cutoffTime: '25 AUG · 08:30',
     operator: 'CONCOR DFC Linehaul',
+    chargeableDistanceKm: 1384,
+    cargoWeightTonnes: 18.5,
   },
   {
     id: 'dep-5',
@@ -93,12 +101,14 @@ export const MOCK_FREIGHT_SCHEDULES: RailDeparture[] = [
     containerType: "40' LCL CONSOLIDATED",
     totalCapacitySlots: 16,
     remainingSlots: 8,
-    status: 'AVAILABLE',
+    status: 'AVAILABLE' as const,
     waitlistCount: 0,
     statusLabel: 'AVAILABLE 8',
     rakeNumber: 'WDFC-FEED-3301',
     cutoffTime: '25 AUG · 13:00',
     operator: 'Gateway Distriparks Rail',
+    chargeableDistanceKm: 1148,
+    cargoWeightTonnes: 17.5,
   },
   {
     id: 'dep-6',
@@ -112,12 +122,14 @@ export const MOCK_FREIGHT_SCHEDULES: RailDeparture[] = [
     containerType: "40' REEFER LCL",
     totalCapacitySlots: 12,
     remainingSlots: 0,
-    status: 'WAITLIST',
+    status: 'WAITLIST' as const,
     waitlistCount: 1,
     statusLabel: 'WL01',
     rakeNumber: 'SR-REEF-4412',
     cutoffTime: '25 AUG · 16:30',
     operator: 'Southern Rail Freight',
+    chargeableDistanceKm: 362,
+    cargoWeightTonnes: 16.0,
   },
   {
     id: 'dep-7',
@@ -131,12 +143,14 @@ export const MOCK_FREIGHT_SCHEDULES: RailDeparture[] = [
     containerType: "40' LCL CONSOLIDATED",
     totalCapacitySlots: 24,
     remainingSlots: 15,
-    status: 'AVAILABLE',
+    status: 'AVAILABLE' as const,
     waitlistCount: 0,
     statusLabel: 'AVAILABLE 15',
     rakeNumber: 'WDFC-NTH-7029',
     cutoffTime: '26 AUG · 01:00',
     operator: 'Adani Logistics Rail',
+    chargeableDistanceKm: 1022,
+    cargoWeightTonnes: 18.0,
   },
   {
     id: 'dep-8',
@@ -150,14 +164,39 @@ export const MOCK_FREIGHT_SCHEDULES: RailDeparture[] = [
     containerType: "40' LCL CONSOLIDATED",
     totalCapacitySlots: 20,
     remainingSlots: 0,
-    status: 'WAITLIST',
+    status: 'WAITLIST' as const,
     waitlistCount: 5,
     statusLabel: 'WL05',
     rakeNumber: 'WDFC-WST-8810',
     cutoffTime: '26 AUG · 11:15',
     operator: 'Pipavav Rail Corp (PRCL)',
+    chargeableDistanceKm: 1280,
+    cargoWeightTonnes: 18.5,
   },
 ];
+
+/**
+ * Clearly labeled mock freight schedules enriched with canonical tariff calculations.
+ * Demo simulation data for Lonics Rail Container Booking workflow.
+ */
+export const MOCK_FREIGHT_SCHEDULES: RailDeparture[] = RAW_FREIGHT_SCHEDULES.map((dep) => {
+  const pricing = calculateRailFreight({
+    originHub: dep.origin,
+    originTerminal: dep.originTerminal,
+    destinationHub: dep.destination,
+    destinationTerminal: dep.destinationTerminal,
+    chargeableDistanceKm: dep.chargeableDistanceKm,
+    containerType: dep.containerType,
+    cargoWeightTonnes: dep.cargoWeightTonnes,
+    isLCLSlot: dep.containerType.includes('LCL'),
+    totalCapacitySlots: dep.totalCapacitySlots,
+  });
+
+  return {
+    ...dep,
+    pricing,
+  };
+});
 
 export const INITIAL_SEED_RESERVATIONS: RailReservation[] = [
   {
@@ -170,6 +209,7 @@ export const INITIAL_SEED_RESERVATIONS: RailReservation[] = [
     bookedAt: '2026-08-22T14:30:00.000Z',
     cargoDescription: 'Precision Auto Spare Parts & Bearings',
     consigneeName: 'Bharat Precision Assemblies Ltd.',
+    pricingSnapshot: MOCK_FREIGHT_SCHEDULES[0].pricing,
   },
   {
     id: 'res-seed-2',
@@ -181,5 +221,6 @@ export const INITIAL_SEED_RESERVATIONS: RailReservation[] = [
     bookedAt: '2026-08-22T15:15:00.000Z',
     cargoDescription: 'Industrial Valves & Couplings',
     consigneeName: 'Delhi Metalworks Private Limited',
+    pricingSnapshot: MOCK_FREIGHT_SCHEDULES[3].pricing,
   },
 ];

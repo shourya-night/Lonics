@@ -14,12 +14,12 @@ import {
   ListTodo,
   Calculator,
   Compass,
-  Moon,
-  Sun,
   ChevronUp,
   ChevronDown,
+  import {
+  Moon,
+  Sun,
   LogOut,
-  ArrowLeft,
   Building2,
   Train,
   Brain,
@@ -422,8 +422,8 @@ interface MissionControlDeckProps {
 export default function MissionControlDeck({
   userProfile,
   onSignOut,
-  onNavigateLanding,
-}: MissionControlDeckProps) {
+  onNavigateLanding: _onNavigateLanding,
+}: MissionControlDeckProps = {}) {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [isDiagnosticsExpanded, setIsDiagnosticsExpanded] = useState(false);
   const [isRailBookingModalOpen, setIsRailBookingModalOpen] = useState(false);
@@ -434,8 +434,18 @@ export default function MissionControlDeck({
 
   useEffect(() => {
     const handleOpenRail = () => setIsRailBookingModalOpen(true);
+    const handleOpenRoad = () => {
+      setActiveTab('Book');
+      window.dispatchEvent(new CustomEvent('lonics:set-road-transport'));
+    };
+
     window.addEventListener('lonics:open-rail-booking', handleOpenRail);
-    return () => window.removeEventListener('lonics:open-rail-booking', handleOpenRail);
+    window.addEventListener('lonics:open-road-booking', handleOpenRoad);
+
+    return () => {
+      window.removeEventListener('lonics:open-rail-booking', handleOpenRail);
+      window.removeEventListener('lonics:open-road-booking', handleOpenRoad);
+    };
   }, []);
 
   const [agents, setAgents] = useState<Record<AgentId, AgentState>>(INITIAL_AGENTS);
@@ -525,28 +535,32 @@ export default function MissionControlDeck({
       <div className="max-w-[1700px] mx-auto space-y-6">
 
         {/* Navigation / Header */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 dark:border-zinc-800 pb-5">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="p-2 rounded-lg bg-gradient-to-tr from-blue-700 to-primary text-white shadow-lg shadow-primary/10">
-                <Network className="h-6 w-6" />
-              </span>
-              <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground/80 to-primary bg-clip-text text-transparent">
-                Lonics Mission Control Deck
-              </h1>
-            </div>
-            <p className="text-muted-foreground text-sm mt-1">
-              Logistics Multi-Agent Orchestrator • Single-Window Quoting Console • Multi-Signal Tracking Terminal
-            </p>
+        <header className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-200 dark:border-zinc-800 pb-4">
+          {/* Left: Brand */}
+          <div className="flex items-center gap-3">
+            <img
+              src="/lonicslogo.png"
+              alt="Lonics"
+              className="h-10 w-10 object-contain rounded-xl shadow-sm flex-shrink-0"
+            />
+            <span className="text-[26px] font-bold tracking-tight text-foreground font-sans leading-none">
+              Lonics
+            </span>
           </div>
 
+<<<<<<< HEAD
           <div className="flex flex-wrap items-center gap-3">
             {/* Authenticated SME Shipper Profile Pill */}
+=======
+          {/* Right: Controls */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Org / Account pill */}
+>>>>>>> b79f9bdc (waitlist and ui changes)
             {userProfile && (
-              <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-zinc-800 bg-card text-xs font-mono">
-                <Building2 className="h-4 w-4 text-sky-600 dark:text-sky-400" />
-                <div className="text-left">
-                  <div className="font-bold text-foreground truncate max-w-[160px]">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-zinc-800 bg-card text-xs font-mono">
+                <Building2 className="h-3.5 w-3.5 text-sky-500 flex-shrink-0" />
+                <div className="text-left leading-tight">
+                  <div className="font-bold text-foreground truncate max-w-[140px]">
                     {userProfile.business_name || userProfile.full_name}
                   </div>
                   <div className="text-[10px] text-muted-foreground">
@@ -556,6 +570,7 @@ export default function MissionControlDeck({
               </div>
             )}
 
+<<<<<<< HEAD
             {/* Back to Public Landing Link */}
             {onNavigateLanding && (
               <button
@@ -600,6 +615,9 @@ export default function MissionControlDeck({
               {theme === 'light' ? 'Dark' : 'Light'}
             </button>
 
+=======
+            {/* Preview OS */}
+>>>>>>> b79f9bdc (waitlist and ui changes)
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('lonics:open-preview'))}
@@ -607,15 +625,20 @@ export default function MissionControlDeck({
               title="Lock and view Operational Preview"
             >
               <Activity className="h-3.5 w-3.5 text-sky-500" />
-              <span className="hidden md:inline">Preview OS</span>
+              <span className="hidden sm:inline">Preview OS</span>
             </button>
 
-            <div className="hidden sm:flex items-center gap-2 text-xs font-mono bg-card/60 border border-slate-200 dark:border-zinc-800 px-3 py-1.5 rounded-full text-muted-foreground">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              SYSTEM: OPERATIONAL
-            </div>
+            {/* Theme toggle */}
+            <button
+              type="button"
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              className="px-3 py-1.5 rounded-lg text-xs font-mono border border-slate-200 dark:border-zinc-800 bg-card text-foreground hover:bg-muted transition duration-200 flex items-center gap-1.5 cursor-pointer"
+            >
+              {theme === 'light' ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">{theme === 'light' ? 'Dark' : 'Light'}</span>
+            </button>
 
-            {/* Sign Out Button */}
+            {/* Sign Out */}
             {onSignOut && (
               <button
                 type="button"
@@ -624,7 +647,7 @@ export default function MissionControlDeck({
                 title="Sign Out of Lonics"
               >
                 <LogOut className="h-3.5 w-3.5" />
-                <span>Sign Out</span>
+                <span className="hidden sm:inline">Sign Out</span>
               </button>
             )}
           </div>
@@ -745,31 +768,23 @@ export default function MissionControlDeck({
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 className="overflow-hidden"
               >
-                <div className="pt-6 grid grid-cols-1 xl:grid-cols-12 gap-6">
-                  {/* Visual Node-to-Node Transmission Grid */}
-                  <div className="xl:col-span-8 bg-card/45 border border-slate-200 dark:border-zinc-800 backdrop-blur-md rounded-xl p-5 shadow-2xl">
-                    <div className="border-b border-slate-200 dark:border-zinc-800 pb-3 mb-4 flex justify-between items-center">
-                      <div>
-                        <h3 className="font-bold text-sm text-foreground">Operational Node Matrix</h3>
-                        <p className="text-xs text-muted-foreground">Select an agent node to view granular telemetry</p>
-                      </div>
-                      <div className="flex items-center gap-3 text-[11px] font-mono">
-                        <div className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500"></span> Connected</div>
-                        <div className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary animate-pulse"></span> Active Flow</div>
-                        <div className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-500"></span> Signal Interruption</div>
-                      </div>
-                    </div>
-
-                    <div className="overflow-x-auto pb-2">
-                      <div className="min-w-[650px]">
-                        {/* Headers */}
-                        <div className="grid grid-cols-12 gap-1 text-[10px] font-mono text-muted-foreground mb-1 text-center font-bold">
-                          <div className="text-left pl-2">LAYER</div>
-                          {AGENT_LIST.map((a) => (
-                            <div key={a.id} className="truncate uppercase" title={a.name}>{a.name.slice(0, 3)}</div>
-                          ))}
+                <div className="pt-6 grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                  {/* Visual Node-to-Node Transmission Grid — spans full 8 cols */}
+                  <div className="xl:col-span-8 space-y-5">
+                    <div className="bg-card/45 border border-slate-200 dark:border-zinc-800 backdrop-blur-md rounded-xl p-5 shadow-2xl">
+                      <div className="border-b border-slate-200 dark:border-zinc-800 pb-3 mb-4 flex flex-wrap justify-between items-center gap-3">
+                        <div>
+                          <h3 className="font-bold text-sm text-foreground">Operational Node Matrix</h3>
+                          <p className="text-xs text-muted-foreground">11×11 cross-layer inter-agent telemetry</p>
                         </div>
+                        <div className="flex items-center gap-3 text-[11px] font-mono">
+                          <div className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500"></span> Connected</div>
+                          <div className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary animate-pulse"></span> Active Flow</div>
+                          <div className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-500"></span> Signal Interruption</div>
+                        </div>
+                      </div>
 
+<<<<<<< HEAD
                         {/* Grid Matrix Rows */}
                         {AGENT_LIST.map((src) => (
                           <div key={src.id} className="grid grid-cols-12 gap-1 py-1 border-t border-slate-200/50 dark:border-zinc-800/50 items-center">
@@ -811,13 +826,86 @@ export default function MissionControlDeck({
                                 </div>
                               );
                             })}
+=======
+                      {/*
+                        Grid strategy:
+                        - First column = row label, fixed at 140px.
+                        - Remaining 11 columns = 1fr each, distributing all leftover panel width equally.
+                        - Each cell has aspect-square so height = computed width (a true square).
+                        - No overflow-x-auto / no scrollbar on normal desktop widths.
+                        - On very narrow viewports (<640px) we allow horizontal scroll.
+                      */}
+                      <div className="overflow-x-auto sm:overflow-x-visible">
+                        <div className="min-w-[480px]">
+                          {/* Column Headers row — same grid template as matrix rows */}
+                          <div className="grid gap-1.5 mb-2 text-[10px] font-mono text-muted-foreground font-bold"
+                               style={{ gridTemplateColumns: '140px repeat(11, 1fr)' }}>
+                            <div className="text-left pl-1 uppercase tracking-wider text-[9px]">LAYER</div>
+                            {AGENT_LIST.map((a) => (
+                              <div key={a.id} className="text-center truncate uppercase text-[9px]" title={a.name}>
+                                {a.name.slice(0, 3)}
+                              </div>
+                            ))}
+>>>>>>> b79f9bdc (waitlist and ui changes)
                           </div>
-                        ))}
+
+                          {/* 11 Matrix Rows */}
+                          <div className="space-y-1.5">
+                            {AGENT_LIST.map((src) => (
+                              <div key={src.id} className="grid gap-1.5 items-center"
+                                   style={{ gridTemplateColumns: '140px repeat(11, 1fr)' }}>
+                                {/* Row label */}
+                                <div className="text-[11px] font-mono font-medium truncate text-muted-foreground pl-1 text-left" title={src.name}>
+                                  {src.name}
+                                </div>
+                                {/* 11 square telemetry cells */}
+                                {AGENT_LIST.map((tgt) => {
+                                  const link = links[src.id]?.[tgt.id];
+                                  return (
+                                    <div
+                                      key={tgt.id}
+                                      className={`relative group w-full aspect-square rounded-md border flex items-center justify-center cursor-pointer transition duration-150 ${
+                                        link?.status === 'inactive'
+                                          ? 'bg-muted/15 border-border/30 hover:bg-muted/40 hover:border-border/70'
+                                          : 'bg-muted/50 border-border/70 hover:border-primary/60'
+                                      }`}
+                                    >
+                                      {link && (
+                                        <span
+                                          className={`h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full transition-all duration-300 ${getLinkStatusColor(
+                                            link.status
+                                          )} ${link.status === 'transmitting' ? 'animate-pulse scale-110' : ''}`}
+                                        />
+                                      )}
+
+                                      {/* Hover Tooltip */}
+                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2.5 rounded-lg bg-popover text-popover-foreground border border-border text-[10px] text-left opacity-0 pointer-events-none group-hover:opacity-100 transition duration-200 z-50 shadow-xl">
+                                        <p className="font-bold text-foreground">
+                                          {src.name} → {tgt.name}
+                                        </p>
+                                        {link?.status !== 'inactive' ? (
+                                          <div className="mt-1 space-y-0.5 text-muted-foreground">
+                                            <p>Status: <span className="capitalize text-foreground font-semibold">{link?.status}</span></p>
+                                            <p>Bandwidth: <span className="text-foreground">{link?.bandwidthKbps} Kbps</span></p>
+                                            <p>Errors: <span className="text-foreground">{(link?.errorRate ?? 0 * 100).toFixed(1)}%</span></p>
+                                            <p>Transmitted: <span className="text-foreground">{link?.messagesTransmitted}</span></p>
+                                          </div>
+                                        ) : (
+                                          <p className="text-muted-foreground mt-0.5">Channel Offline</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
                     {/* List of 11 Operational Layer Status Nodes */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {AGENT_LIST.map((agentInfo) => {
                         const agentState = agents[agentInfo.id];
                         const isSelected = selectedAgentId === agentInfo.id;

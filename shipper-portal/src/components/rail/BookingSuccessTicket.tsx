@@ -1,6 +1,7 @@
 import React from 'react';
 import type { RailReservation } from '../../types/rail-booking';
-import { CheckCircle2, Users, ArrowRight, Copy, Check } from 'lucide-react';
+import { formatINR } from '../../utils/railPricingEngine';
+import { CheckCircle2, Users, ArrowRight, Copy, Check, ShieldCheck, IndianRupee } from 'lucide-react';
 
 interface BookingSuccessTicketProps {
   reservation: RailReservation;
@@ -15,6 +16,7 @@ export const BookingSuccessTicket: React.FC<BookingSuccessTicketProps> = ({
 }) => {
   const [copied, setCopied] = React.useState(false);
   const isWaitlist = reservation.status.startsWith('WL');
+  const pricing = reservation.pricingSnapshot || reservation.departure?.pricing;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(reservation.bookingReference);
@@ -91,8 +93,32 @@ export const BookingSuccessTicket: React.FC<BookingSuccessTicketProps> = ({
           </div>
         </div>
 
+        {/* Confirmed Tariff Price Box */}
+        {pricing && (
+          <div className="bg-muted/40 border border-border p-3 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 font-mono text-xs">
+            <div>
+              <div className="flex items-center gap-1 text-[10px] text-primary font-bold uppercase">
+                <IndianRupee className="h-3 w-3" />
+                <span>{pricing.estimateLabel}</span>
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">
+                {pricing.chargeableDistanceKm} km • {pricing.distanceBandLabel} • {pricing.weightBandLabel}
+              </div>
+            </div>
+            <div className="text-left sm:text-right">
+              <div className="text-base font-bold text-foreground">
+                {formatINR(pricing.totalFreight)}
+                {pricing.isLCLSlot && <span className="text-[10px] font-normal text-muted-foreground"> / slot</span>}
+              </div>
+              <div className="text-[9px] text-muted-foreground">
+                Tariff: {pricing.tariffMetadata?.tariffVersion}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Grid Meta */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-mono bg-muted/30 p-3 rounded-lg border border-border">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-mono bg-muted/20 p-3 rounded-lg border border-border/80">
           <div>
             <span className="text-[10px] text-muted-foreground uppercase block">Container</span>
             <span className="font-bold text-foreground">{reservation.departure.containerCode}</span>
@@ -105,9 +131,15 @@ export const BookingSuccessTicket: React.FC<BookingSuccessTicketProps> = ({
             <span className="text-[10px] text-muted-foreground uppercase block">Container Type</span>
             <span className="font-bold text-foreground">{reservation.departure.containerType}</span>
           </div>
-          <div className="col-span-2 sm:col-span-3 border-t border-border/50 pt-2 mt-1">
-            <span className="text-[10px] text-muted-foreground uppercase block">Consignee</span>
-            <span className="font-semibold text-foreground truncate block">{reservation.consigneeName}</span>
+          <div className="col-span-2 sm:col-span-3 border-t border-border/50 pt-2 mt-1 flex justify-between items-center">
+            <div>
+              <span className="text-[10px] text-muted-foreground uppercase block">Consignee</span>
+              <span className="font-semibold text-foreground truncate block">{reservation.consigneeName}</span>
+            </div>
+            <div className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-semibold">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              <span>Session Snapshot Locked</span>
+            </div>
           </div>
         </div>
       </div>

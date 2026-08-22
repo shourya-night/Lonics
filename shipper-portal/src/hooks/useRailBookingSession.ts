@@ -84,6 +84,7 @@ export function useRailBookingSession() {
         bookedAt: new Date().toISOString(),
         cargoDescription,
         consigneeName,
+        pricingSnapshot: updatedDeparture.pricing,
       };
 
       setDepartures((prev) => prev.map((d) => (d.id === departureId ? updatedDeparture : d)));
@@ -122,6 +123,7 @@ export function useRailBookingSession() {
         bookedAt: new Date().toISOString(),
         cargoDescription,
         consigneeName,
+        pricingSnapshot: updatedDeparture.pricing,
       };
 
       setDepartures((prev) => prev.map((d) => (d.id === departureId ? updatedDeparture : d)));

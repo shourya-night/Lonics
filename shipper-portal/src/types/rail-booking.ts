@@ -1,3 +1,5 @@
+import type { RailPricingResult } from '../utils/railPricingEngine';
+
 export type DepartureStatus = 'AVAILABLE' | 'LOW_AVAILABILITY' | 'LAST_SLOT' | 'WAITLIST';
 
 export type ReservationStatus =
@@ -27,6 +29,9 @@ export interface RailDeparture {
   rakeNumber: string;
   cutoffTime: string;
   operator: string;
+  chargeableDistanceKm: number;
+  cargoWeightTonnes: number;
+  pricing: RailPricingResult;
 }
 
 export interface RailReservation {
@@ -41,6 +46,9 @@ export interface RailReservation {
   cargoDescription: string;
   consigneeName: string;
   cancelledAt?: string;
+  // Immutable pricing snapshot captured at booking time
+  pricingSnapshot: RailPricingResult;
 }
 
 export type ModalTab = 'departures' | 'reservations';
+

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { RailDeparture } from '../../types/rail-booking';
-import { ArrowRight, Train, Users } from 'lucide-react';
+import { formatINR } from '../../utils/railPricingEngine';
+import { ArrowRight, Train, Users, ShieldCheck, Scale, MapPin } from 'lucide-react';
 
 interface DepartureCardProps {
   departure: RailDeparture;
@@ -21,6 +22,8 @@ export const DepartureCard: React.FC<DepartureCardProps> = ({
   const capacityFillPercent = Math.round(
     ((departure.totalCapacitySlots - departure.remainingSlots) / departure.totalCapacitySlots) * 100
   );
+
+  const pricing = departure.pricing;
 
   return (
     <div className="bg-card text-card-foreground border border-border rounded-xl p-4 sm:p-5 transition-all duration-200 hover:border-primary/40 shadow-sm space-y-4">
@@ -46,24 +49,63 @@ export const DepartureCard: React.FC<DepartureCardProps> = ({
           <ArrowRight className="h-4 w-4 text-primary shrink-0" />
           <span>{departure.destination}</span>
         </div>
-        <div className="text-[11px] font-mono text-muted-foreground flex flex-wrap gap-x-3">
-          <span>Gate: {departure.originTerminal}</span>
+        <div className="text-[11px] font-mono text-muted-foreground flex flex-wrap gap-x-3 items-center">
+          <span className="flex items-center gap-1">
+            <MapPin className="h-3 w-3 text-primary" />
+            <span>Gate: {departure.originTerminal}</span>
+          </span>
           <span>→ Dest: {departure.destinationTerminal}</span>
         </div>
       </div>
 
-      {/* Container Code & Type */}
+      {/* Container Code, Distance & Tariff Specs */}
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="px-2 py-0.5 rounded bg-muted text-foreground font-bold border border-border">
             {departure.containerCode}
           </span>
           <span className="text-muted-foreground font-semibold">
             {departure.containerType}
           </span>
+          <span className="flex items-center gap-1 text-[10px] text-muted-foreground border-l border-border pl-2">
+            <Scale className="h-3 w-3 text-primary/80" />
+            <span>{departure.cargoWeightTonnes} t basis</span>
+          </span>
         </div>
         <div className="text-[11px] text-muted-foreground">
-          Cut-off: <span className="text-foreground">{departure.cutoffTime}</span>
+          Cut-off: <span className="text-foreground font-semibold">{departure.cutoffTime}</span>
+        </div>
+      </div>
+
+      {/* Calculated Tariff-Derived Freight Card */}
+      <div className="p-3 bg-muted/30 border border-border/80 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-primary flex items-center gap-1">
+              <ShieldCheck className="h-3 w-3" />
+              {pricing?.estimateLabel || 'Estimated Rail Freight · Tariff Based'}
+            </span>
+            <span className="text-[9px] font-mono text-muted-foreground">
+              ({pricing?.tariffMetadata?.tariffVersion || 'IR-CTO-2026.01'})
+            </span>
+          </div>
+          <div className="text-[11px] font-mono text-muted-foreground">
+            {departure.chargeableDistanceKm?.toLocaleString()} km chargeable rail • {pricing?.distanceBandLabel} • {pricing?.weightBandLabel}
+          </div>
+        </div>
+
+        <div className="text-left sm:text-right">
+          <div className="text-lg sm:text-xl font-bold font-mono text-foreground flex items-baseline gap-1 sm:justify-end">
+            <span>{formatINR(pricing?.totalFreight || 0)}</span>
+            {pricing?.isLCLSlot && (
+              <span className="text-[10px] font-mono font-normal text-muted-foreground">
+                / slot
+              </span>
+            )}
+          </div>
+          <div className="text-[9px] font-mono text-muted-foreground">
+            {pricing?.isLCLSlot ? `(1/${pricing.slotCapacity} consolidated container slot)` : 'Full container haulage rate'}
+          </div>
         </div>
       </div>
 
@@ -106,7 +148,7 @@ export const DepartureCard: React.FC<DepartureCardProps> = ({
                 {departure.statusLabel}
               </span>
               <span className="text-[11px] font-mono text-muted-foreground">
-                {departure.waitlistCount} {departure.waitlistCount === 1 ? 'shipment' : 'shipments'} currently ahead of you
+                {departure.waitlistCount} {departure.waitlistCount === 1 ? 'shipment' : 'shipments'} ahead
               </span>
             </div>
           ) : isLastSlot ? (

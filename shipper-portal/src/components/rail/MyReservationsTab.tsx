@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { RailReservation } from '../../types/rail-booking';
-import { ArrowRight, Train, CheckCircle2, Users, Ban, Trash2 } from 'lucide-react';
+import { formatINR } from '../../utils/railPricingEngine';
+import { ArrowRight, Train, CheckCircle2, Users, Ban, Trash2, IndianRupee, ShieldCheck } from 'lucide-react';
 
 interface MyReservationsTabProps {
   reservations: RailReservation[];
@@ -49,6 +50,7 @@ export const MyReservationsTab: React.FC<MyReservationsTabProps> = ({
         const isCancelled = res.status === 'CANCELLED';
         const isWaitlist = res.status.startsWith('WL');
         const isConfirmingCancel = cancellingId === res.id;
+        const pricing = res.pricingSnapshot || res.departure?.pricing;
 
         return (
           <div
@@ -100,6 +102,31 @@ export const MyReservationsTab: React.FC<MyReservationsTabProps> = ({
                 <span>Rake: <span className="text-foreground">{res.departure.rakeNumber}</span></span>
               </div>
             </div>
+
+            {/* Pricing Snapshot Banner */}
+            {pricing && (
+              <div className="p-2.5 bg-muted/30 border border-border/80 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs font-mono">
+                <div>
+                  <div className="flex items-center gap-1 text-[10px] text-primary font-bold uppercase">
+                    <IndianRupee className="h-3 w-3" />
+                    <span>Booking Tariff Snapshot: {pricing.estimateLabel}</span>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    {pricing.chargeableDistanceKm} km • {pricing.distanceBandLabel} • {pricing.weightBandLabel}
+                  </div>
+                </div>
+                <div className="text-left sm:text-right">
+                  <div className="text-sm sm:text-base font-bold text-foreground">
+                    {formatINR(pricing.totalFreight)}
+                    {pricing.isLCLSlot && <span className="text-[10px] font-normal text-muted-foreground"> / slot</span>}
+                  </div>
+                  <div className="text-[9px] text-muted-foreground flex items-center gap-1 sm:justify-end">
+                    <ShieldCheck className="h-3 w-3 text-emerald-500" />
+                    <span>Tariff {pricing.tariffMetadata?.tariffVersion}</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Metadata Badges */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] font-mono bg-muted/40 p-2.5 rounded-lg border border-border/80">
